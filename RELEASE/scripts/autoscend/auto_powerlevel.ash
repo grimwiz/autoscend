@@ -61,6 +61,10 @@ boolean LX_attemptPowerLevel()
 	{
 		return false;
 	}
+	if(L13_prefarmBoningKnife())
+	{
+		return true;		//productive fights that also count for exp and flyers
+	}
 
 	auto_log_warning("I've run out of stuff to do. Time to powerlevel, I suppose.", "red");
 

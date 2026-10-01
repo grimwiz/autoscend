@@ -1326,6 +1326,37 @@ boolean L13_towerNSTowerMeat()
 	return true;
 }
 
+boolean L13_prefarmBoningKnife()
+{
+	//called when we have run out of other things to do and are about to powerlevel.
+	//the Wall of Bones usually needs an [Electric Boning Knife], which otherwise gets backfarmed from the tower after the war.
+	//Ground Floor fights give at least as much exp as non-scaling powerlevel zones and, unlike the battlefield, can be flyered.
+	//so fetching the knife now replaces powerlevel turns instead of adding turns at the end of the run.
+	if(item_amount($item[Electric Boning Knife]) > 0)
+	{
+		return false;
+	}
+	if(internalQuestStatus("questL13Final") > 8)
+	{
+		return false;		//already past the Wall of Bones
+	}
+	if(isActuallyEd() || in_bugbear() || in_pokefam() || in_fotd())
+	{
+		return false;		//paths that do not need a boning knife for the tower
+	}
+	if(highestScalingZone() != $location[none] && !get_property("auto_getBoningKnife").to_boolean())
+	{
+		return false;		//scaling zone is better for exp and flyers, and we may still towerkill the wall
+	}
+	location ground = $location[The Castle in the Clouds in the Sky (Ground Floor)];
+	if(!zone_isAvailable(ground) || !lar_repeat(ground))
+	{
+		return false;
+	}
+	auto_log_info("Nothing else to do. Fetching an Electric Boning Knife now instead of powerleveling", "green");
+	return autoAdv(ground);
+}
+
 boolean L13_towerNSTowerBones()
 {
 	if(!contains_text(visit_url("place.php?whichplace=nstower"), "ns_07_monster3"))

@@ -1496,6 +1496,7 @@ boolean L13_sorceressDoor();
 boolean L13_towerNSTower();
 boolean L13_towerNSTowerSkin();
 boolean L13_towerNSTowerMeat();
+boolean L13_prefarmBoningKnife();
 boolean L13_towerNSTowerBones();
 boolean L13_towerNSTowerMirror();
 boolean L13_towerNSTowerShadow();
