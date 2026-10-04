@@ -355,6 +355,29 @@ boolean LX_unlockHauntedLibrary()
 	
 	//equipment handling
 	int expectPool = speculative_pool_skill();
+
+	// Pull hand chalk or a pool cue from Hagnk's only once they would win the game (pool skill 18): practising
+	// first raises the skill and may well drop them, so pulling at the start can waste a pull.
+	if(expectPool < 18 && !is_boris() && !in_tcrs() && pulls_remaining() != 0)
+	{
+		item chalk = $item[Handful of Hand Chalk];
+		boolean haveChalk = have_effect($effect[Chalky Hand]) > 0 || item_amount(chalk) > 0;
+		boolean haveCue = possessEquipment($item[Pool Cue]) || possessEquipment($item[2268]);
+		int chalkGain = (!haveChalk && auto_is_valid(chalk) && storage_amount(chalk) > 0) ? 3 : 0;
+		int cueGain = (!haveCue && auto_is_valid($item[Pool Cue]) && storage_amount($item[Pool Cue]) > 0) ? 3 : 0;
+		if(chalkGain + cueGain > 0 && expectPool + chalkGain + cueGain >= 18)
+		{
+			auto_log_info("Pool skill " + expectPool + ": pulling just enough to win the billiards game.", "blue");
+			if(chalkGain > 0 && pullXWhenHaveY(chalk, 1, 0))
+			{
+				expectPool = speculative_pool_skill();
+			}
+			if(expectPool < 18 && cueGain > 0)
+			{
+				pullXWhenHaveY($item[Pool Cue], 1, 0);
+			}
+		}
+	}
 	item staffOfFats = $item[2268];		//regular staff of fats. +5 pool +2 training
 	item EdStaffOfFats = $item[7964];	//ed path version of staff of fats. +5 pool
 	item EdStaffOfEd = $item[7961];		//ed path version of staff of ed. +5 pool

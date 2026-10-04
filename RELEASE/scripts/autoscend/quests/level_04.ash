@@ -67,6 +67,12 @@ boolean L4_batCave()
 			{
 				auto_buyUpTo(1, $item[Sonar-In-A-Biscuit]);
 			}
+			if(item_amount($item[Sonar-In-A-Biscuit]) == 0 && storage_amount($item[Sonar-In-A-Biscuit]) > 0)
+			{
+				// a sonar from Hagnk's knocks down a wall instead of fighting bats for one. The bat zones aren't
+				// rich in meat; the Boss Bat's Lair (bodyguard bats) is, and that's still fought.
+				pullXWhenHaveY($item[Sonar-In-A-Biscuit], 1, 0);
+			}
 			if(item_amount($item[Sonar-In-A-Biscuit]) == 0)
 			{
 				// attempt to monkey wish for sonars
