@@ -1664,6 +1664,7 @@ void auto_drinkNightcap();
 ConsumeAction auto_findBestConsumeAction(string type);
 ConsumeAction auto_findBestConsumeAction();
 boolean auto_autoConsumeOne(ConsumeAction action);
+boolean loadConsumables(string _type, ConsumeAction[int] actions);
 boolean auto_autoConsumeOne(string type);
 item auto_autoConsumeOneSimulation(string type);
 boolean auto_knapsackAutoConsume(string type, boolean simulate);

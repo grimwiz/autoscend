@@ -341,6 +341,34 @@ boolean LX_unlockHauntedBilliardsRoom() {
 	return LX_unlockHauntedBilliardsRoom(true);
 }
 
+// Pool skill peaks at exactly 10 drunkenness (+10; each point past 10 costs 2), so drink to exactly 10 before
+// playing: the most desirable drinks that fit, under The Ode to Booze (autoConsume keeps it up for them).
+void billiardsDrinkToTen()
+{
+	if(my_inebriety() >= 10 || inebriety_limit() < 10 || !can_drink() || get_property("auto_limitConsume").to_boolean())
+	{
+		return;
+	}
+	ConsumeAction[int] actions;
+	loadConsumables("drink", actions);
+	int[int] space;
+	float[int] desirability;
+	for (int i=0; i<count(actions); i++)
+	{
+		space[i] = actions[i].size;
+		desirability[i] = actions[i].desirability;
+	}
+	foreach i in knapsack(10 - my_inebriety(), count(actions), space, desirability)
+	{
+		if(my_inebriety() + actions[i].size > 10)
+		{
+			continue;
+		}
+		auto_log_info("Drinking " + (actions[i].it != $item[none] ? actions[i].it.to_string() : "a cafe drink") + " to reach 10 drunkenness for the pool game.", "blue");
+		auto_autoConsumeOne(actions[i]);
+	}
+}
+
 boolean LX_unlockHauntedLibrary()
 {
 	//Adventure in the haunted billiards room to get the key to the haunted library
@@ -355,6 +383,11 @@ boolean LX_unlockHauntedLibrary()
 	
 	//equipment handling
 	int expectPool = speculative_pool_skill();
+	if(expectPool < 18)
+	{
+		billiardsDrinkToTen();
+		expectPool = speculative_pool_skill();
+	}
 
 	// Pull hand chalk or a pool cue from Hagnk's only once they would win the game (pool skill 18): practising
 	// first raises the skill and may well drop them, so pulling at the start can waste a pull.
