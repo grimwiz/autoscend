@@ -49,3 +49,4 @@ auto_towerBreak	string	Where should we break in the tower? (e.g. wall of skin, w
 auto_ignoreRestoreFailure	boolean	if true we will always ignore failure to restore MP or HP and just continue playing
 auto_workshed	string	What workshed item should we initialize with? If blank or invalid, we will change workshed based on priorities. There are some shorthands or you can use the full name of the workshed item. Some worksheds are not implemented so unless you are certain you want to deviate, use auto.
 auto_stopMinutesToRollover	int	How many minutes before rollover do we need to start getting ready for bed?
+auto_nemesisInRun	boolean	If true, finish the Legendary Epic Weapon and the Nemesis Cave during the run (buying the cave door skill if needed). Your Nemesis then sends the four assassins as wandering monsters while the run continues, so only the volcano island is left for aftercore.

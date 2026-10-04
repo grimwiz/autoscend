@@ -57,6 +57,7 @@ banish	50	bugaboo	path:Bugbear Invasion;loc:Morgue;!sniffed:bugaboo
 banish	51	Battlesuit Bugbear Type	path:Bugbear Invasion:loc:Engineering;!sniffed:Battlesuit Bugbear Type
 banish	52	ancient unspeakable bugbear	path:Bugbear Invasion;loc:Navigation;!sniffed:ancient unspeakable bugbear
 banish	53	trendy bugbear chef	path:Bugbear Invasion;loc:Galley;loc:Gallery;!sniffed:trendy bugbear chef
+banish	54	freaked-out mushroom guy	loc:The Fungal Nethers;item:fizzing spore pod<6
 
 copy	0	Pygmy Bowler	prop:hiddenBowlingAlleyProgress<4
 copy	1	Bob Racecar
@@ -244,6 +245,7 @@ sniff	46	angry cavebugbear	path:Bugbear Invasion
 sniff	47	Knott Yeti	path:Adventurer Meats World;prop:auto_shouldMeatLevel=true
 # oh noes, we might spend extra turns here getting meat before the elegant nightstand when we might actually want it! the horror!
 sniff	48	Animated ornate Nightstand	path:Adventurer Meats World;prop:auto_shouldMeatLevel=true
+sniff	49	angry mushroom guy	loc:The Fungal Nethers;item:fizzing spore pod<6
 
 # Gotta get that wig
 yellowray	0	Burly Sidekick	item:Mohawk Wig<1;!skill:Comprehensive Cartography;!itemdropcapped:10=Mohawk wig

@@ -1202,7 +1202,9 @@ boolean LX_nemesisLegendaryEpicWeapon(int status)
 	{
 		if (!nemesisGetClowniness())
 		{
+			// the Clownlord's door is a superlikely, so -combat doesn't help; item drop finds the clown gear sooner
 			auto_log_info("Nemesis: only " + nemesisWearableClowniness() + " Clowniness to wear; looking for clown gear in the Fun House.", "blue");
+			addToMaximize("50item 300max");
 		}
 		auto_log_info("Nemesis: hunting the Clownlord Beelzebozo for the Legendary Epic Weapon's missing piece.", "blue");
 		addToMaximize("100clowniness 100max");
@@ -1283,7 +1285,11 @@ boolean LX_nemesisCave(int status)
 	{
 		if (item_amount($item[fizzing spore pod]) < 6)
 		{
+			// we're well over-powered here by now, so trade fighting power for item drop: the angry mushroom guy's 70%
+			// spore pod drop caps at +43%. He's sniffed and the other mushroom guy banished (autoscend_monsters).
 			auto_log_info("Nemesis: collecting fizzing spore pods (" + item_amount($item[fizzing spore pod]) + "/6).", "blue");
+			provideItem(50, $location[The Fungal Nethers], true);
+			addToMaximize("100item 50max");
 			return autoAdv($location[The Fungal Nethers]);
 		}
 		visit_url("place.php?whichplace=nemesiscave&action=nmcave_rubble");

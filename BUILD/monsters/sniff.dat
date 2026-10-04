@@ -53,3 +53,4 @@ angry cavebugbear	path:Bugbear Invasion
 Knott Yeti	path:Adventurer Meats World;prop:auto_shouldMeatLevel=true
 # oh noes, we might spend extra turns here getting meat before the elegant nightstand when we might actually want it! the horror!
 Animated ornate Nightstand	path:Adventurer Meats World;prop:auto_shouldMeatLevel=true
+angry mushroom guy	loc:The Fungal Nethers;item:fizzing spore pod<6

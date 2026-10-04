@@ -27,6 +27,7 @@ finishBuildingSmutOrcBridge
 auto_earlyRoutingHandling
 # Guild access.
 LX_guildUnlock
+LX_NemesisQuest	auto_nemesisInRun
 #	Desert access, Daily Dungeon and other early random stuff that we don't want to miss.
 LX_unlockDesert
 LX_lockPicking
