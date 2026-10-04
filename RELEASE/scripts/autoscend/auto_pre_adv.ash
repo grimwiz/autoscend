@@ -540,6 +540,37 @@ boolean auto_pre_adventure()
 		}
 	}
 
+	// Offer Latte to Opponent is a sniff as well (once a day), but only with the mug in hand. Where there's a monster we
+	// want to sniff and the zone is easy enough to give up the off-hand (no monster can take a quarter of our HP),
+	// bring the mug along for it. Not when the off-hand is busy burning delay with the Kramco.
+	item latteMug = $item[latte lovers member\'s mug];
+	if(!is_boris() && possessEquipment(latteMug) && auto_can_equip(latteMug) && !get_property("_latteCopyUsed").to_boolean()
+		&& !(auto_sausageGoblin() && place == solveDelayZone()))
+	{
+		monster latteTarget = $monster[none];
+		boolean easyZone = true;
+		foreach mon, rate in auto_combat_appearance_rates(place)
+		{
+			if(rate <= 0)
+			{
+				continue;
+			}
+			if(auto_wantToSniff(mon, place) && !isSniffed(mon, $skill[Offer Latte to Opponent]))
+			{
+				latteTarget = mon;
+			}
+			if(expected_damage(mon) * 4 > my_maxhp())
+			{
+				easyZone = false;
+			}
+		}
+		if(latteTarget != $monster[none] && easyZone)
+		{
+			auto_log_info("Bringing the latte mug to offer the " + latteTarget + " a latte (a sniff): " + place + " is easy enough to spare the off-hand.", "blue");
+			autoEquip(latteMug);
+		}
+	}
+
 	if(get_property("auto_forceNonCombatSource") == "McHugeLarge left ski" && !get_property("auto_avalancheDeployed").to_boolean())
 	{
 		autoForceEquip($slot[acc2],wrap_item($item[McHugeLarge left ski]));
