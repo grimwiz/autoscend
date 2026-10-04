@@ -510,6 +510,23 @@ void itznotyerzitzMineChoiceHandler(int choice)
 	}
 }
 
+// On the eXtreme route, pull the eXtreme Cold-Weather Gear pieces you're missing from Hagnk's rather than spend
+// slope turns collecting them (up to 3 pulls).
+void L8_pullExtremeGear()
+{
+	if(possessOutfit("eXtreme Cold-Weather Gear"))
+	{
+		return;
+	}
+	foreach it in $items[eXtreme scarf, eXtreme mittens, snowboarder pants]
+	{
+		if(!possessEquipment(it) && storage_amount(it) > 0 && auto_is_valid(it))
+		{
+			pullXWhenHaveY(it, 1, 0);
+		}
+	}
+}
+
 boolean L8_trapperExtreme()
 {
 	if(internalQuestStatus("questL08Trapper") != 2)
@@ -521,6 +538,11 @@ boolean L8_trapperExtreme()
 		return true; //successfully finished this part of the quest
 	}
 	
+	if(!auto_haveMcHugeLargeSkis())
+	{
+		L8_pullExtremeGear();
+	}
+
 	// First choice is the MtLargeHuge IOTM equipment
 	if(auto_haveMcHugeLargeSkis())
 	{
