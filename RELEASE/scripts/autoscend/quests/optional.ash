@@ -1122,11 +1122,88 @@ void nemesisVisitGuild()
 	cli_execute("refresh quests");
 }
 
+// clown gear in the order to pull it: 50s first (a clown wig and a clownskin harness is the usual pair), the
+// 75 bow tie for when there's no shirt, then the 25s
+static item[int] nemesisClownGear = {
+	$item[clown wig], $item[clownskin harness], $item[polka-dot bow tie], $item[clown whip], $item[balloon sword],
+	$item[clownskin buckler], $item[clownskin belt], $item[big red clown nose], $item[clown shoes],
+	$item[balloon helmet], $item[foolscap fool's cap], $item[bloody clown pants]
+};
+
+// the Clowniness you could wear from what you hold: the best item per slot, up to three accessories,
+// a shirt only with Torso Awareness
+int nemesisWearableClowniness()
+{
+	int[slot] best;
+	int[int] accessories;
+	foreach i, it in nemesisClownGear
+	{
+		if (available_amount(it) == 0 || !can_equip(it))
+		{
+			continue;
+		}
+		slot s = it.to_slot();
+		if (s == $slot[shirt] && !hasTorso())
+		{
+			continue;
+		}
+		int clown = numeric_modifier(it, "Clowniness").to_int();
+		if (s == $slot[acc1])
+		{
+			for copy from 1 to min(3, available_amount(it))
+			{
+				accessories[count(accessories)] = clown;
+			}
+			continue;
+		}
+		best[s] = max(best[s], clown);
+	}
+	int total = 0;
+	foreach s, clown in best
+	{
+		total += clown;
+	}
+	sort accessories by -value;
+	foreach i, clown in accessories
+	{
+		if (i < 3)
+		{
+			total += clown;
+		}
+	}
+	return total;
+}
+
+// pull the fewest clown items needed for the 100 Clowniness Beelzebozo wants
+boolean nemesisGetClowniness()
+{
+	foreach i, it in nemesisClownGear
+	{
+		if (nemesisWearableClowniness() >= 100)
+		{
+			return true;
+		}
+		if (it == $item[clownskin harness] && !hasTorso())
+		{
+			continue;
+		}
+		if (available_amount(it) == 0 && storage_amount(it) > 0)
+		{
+			pullXWhenHaveY(it, 1, 0);
+		}
+	}
+	return nemesisWearableClowniness() >= 100;
+}
+
 boolean LX_nemesisLegendaryEpicWeapon(int status)
 {
 	item lew = epicWeapons[my_class()];
-	if (status == 5)	// defeat Beelzebozo in the Fun House, which needs 100 Clowniness (4 clown items)
+	if (status == 5)	// defeat Beelzebozo in the Fun House, which needs 100 Clowniness
 	{
+		if (!nemesisGetClowniness())
+		{
+			auto_log_info("Nemesis: only " + nemesisWearableClowniness() + " Clowniness to wear; looking for clown gear in the Fun House.", "blue");
+		}
 		auto_log_info("Nemesis: hunting the Clownlord Beelzebozo for the Legendary Epic Weapon's missing piece.", "blue");
 		addToMaximize("100clowniness 100max");
 		return autoAdv($location[The "Fun" House]);
