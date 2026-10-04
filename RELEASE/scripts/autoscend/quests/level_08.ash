@@ -934,10 +934,33 @@ boolean L8_trapperPeak()
 	return false;
 }
 
+// Can you wear the whole eXtreme Cold-Weather Gear, each piece owned or pullable from Hagnk's?
+boolean L8_extremeOutfitReady()
+{
+	foreach it in $items[eXtreme scarf, eXtreme mittens, snowboarder pants]
+	{
+		boolean have = possessEquipment(it) || (!in_hardcore() && pulls_remaining() != 0 && storage_amount(it) > 0 && auto_is_valid(it));
+		if(!have || !can_equip(it))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 boolean L8_forceExtremeInstead()
 {
 	// If for some reason we've already got 2 ninja items, no need to get forcey
 	if(available_amount($item[ninja crampons]) > 0) { return false; }
+	// The eXtreme Cold-Weather Gear is kept between ascensions while the ninja climbing gear is quest gear, lost at
+	// every ascension. With the whole outfit to hand (owned, or pulled when we get there) the eXtreme Slope takes a
+	// few noncombats against 10-25 turns in the Lair, so prefer it unless the Lair's combats can be forced.
+	if (!get_property("auto_L8_extremeInstead").to_boolean() && L8_extremeOutfitReady()
+	&& !auto_haveQueuedForcedCombat() && !auto_canForceNextCombat() && !auto_haveCombatForceSource())
+	{
+		auto_log_info("Climbing via the eXtreme Slope: the eXtreme Cold-Weather Gear is to hand, and ninja gear is lost at ascension.", "blue");
+		set_property("auto_L8_extremeInstead", true);
+	}
 	// Set the variable if we're doing McHugeLarge items and aren't already forcing combats for lair
 	if (auto_canEquipAllMcHugeLarge() 
 	&& !auto_haveQueuedForcedCombat() 
