@@ -341,11 +341,13 @@ boolean LX_unlockHauntedBilliardsRoom() {
 	return LX_unlockHauntedBilliardsRoom(true);
 }
 
-// Pool skill peaks at exactly 10 drunkenness (+10; each point past 10 costs 2), so drink to exactly 10 before
-// playing: the most desirable drinks that fit, under The Ode to Booze (autoConsume keeps it up for them).
-void billiardsDrinkToTen()
+// Below 10 drunkenness each point adds 1 pool skill (past 10 each point costs 2), so drink just enough to reach
+// the sure-win pool skill of 18, never past 10: the most desirable drinks that fit, under The Ode to Booze
+// (autoConsume keeps it up for them). A day that starts with practised skill needs less.
+void billiardsDrinkForPool(int expectPool)
 {
-	if(my_inebriety() >= 10 || inebriety_limit() < 10 || !can_drink() || get_property("auto_limitConsume").to_boolean())
+	int target = min(10, my_inebriety() + max(0, 18 - expectPool));
+	if(target <= my_inebriety() || inebriety_limit() < target || !can_drink() || get_property("auto_limitConsume").to_boolean())
 	{
 		return;
 	}
@@ -358,13 +360,13 @@ void billiardsDrinkToTen()
 		space[i] = actions[i].size;
 		desirability[i] = actions[i].desirability;
 	}
-	foreach i in knapsack(10 - my_inebriety(), count(actions), space, desirability)
+	foreach i in knapsack(target - my_inebriety(), count(actions), space, desirability)
 	{
-		if(my_inebriety() + actions[i].size > 10)
+		if(my_inebriety() + actions[i].size > target)
 		{
 			continue;
 		}
-		auto_log_info("Drinking " + (actions[i].it != $item[none] ? actions[i].it.to_string() : "a cafe drink") + " to reach 10 drunkenness for the pool game.", "blue");
+		auto_log_info("Drinking " + (actions[i].it != $item[none] ? actions[i].it.to_string() : "a cafe drink") + " towards " + target + " drunkenness for pool skill 18.", "blue");
 		auto_autoConsumeOne(actions[i]);
 	}
 }
@@ -385,7 +387,7 @@ boolean LX_unlockHauntedLibrary()
 	int expectPool = speculative_pool_skill();
 	if(expectPool < 18)
 	{
-		billiardsDrinkToTen();
+		billiardsDrinkForPool(expectPool);
 		expectPool = speculative_pool_skill();
 	}
 
