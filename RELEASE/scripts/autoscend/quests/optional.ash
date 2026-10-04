@@ -1106,14 +1106,143 @@ boolean LX_acquireEpicWeapon()
 	return autoAdv($location[The Unquiet Garves]);
 }
 
-// TODO: Add the rest of the Nemesis quest with a flag to enable doing it in-run?
+// With auto_nemesisInRun, finish the Legendary Epic Weapon and the Nemesis Cave during the run. Beating your
+// Nemesis in the cave starts the four assassins, who then turn up as wandering monsters (as your unbuffed
+// mainstat reaches 45, 60, 75 and 90) while the run carries on. The last one drops the volcano map, so by
+// the time the King is freed only the volcano island is left for aftercore (and its Instant Karma).
+boolean auto_nemesisInRun()
+{
+	return get_property("auto_nemesisInRun").to_boolean() && isGuildClass();
+}
+
+void nemesisVisitGuild()
+{
+	visit_url("guild.php?place=scg");
+	visit_url("guild.php?place=scg");	// the quest only advances on the second visit
+	cli_execute("refresh quests");
+}
+
+boolean LX_nemesisLegendaryEpicWeapon(int status)
+{
+	item lew = epicWeapons[my_class()];
+	if (status == 5)	// defeat Beelzebozo in the Fun House, which needs 100 Clowniness (4 clown items)
+	{
+		auto_log_info("Nemesis: hunting the Clownlord Beelzebozo for the Legendary Epic Weapon's missing piece.", "blue");
+		addToMaximize("100clowniness 100max");
+		return autoAdv($location[The "Fun" House]);
+	}
+	if (status == 6 || status == 8)
+	{
+		nemesisVisitGuild();
+		return true;
+	}
+	if (status == 7)	// meatsmith the two halves together (KoLmafia buys the tenderizing hammer)
+	{
+		if (!retrieve_item(1, lew))
+		{
+			auto_log_warning("Nemesis: couldn't meatsmith the " + lew + "; skipping the in-run nemesis quest.", "red");
+			set_property("auto_nemesisInRun", false);
+			return false;
+		}
+		return true;
+	}
+	return false;
+}
+
+boolean LX_nemesisCave(int status)
+{
+	// the cave quest is offered at 23 base mainstat; its mushrooms and your Nemesis are best met from level 8
+	if (my_level() < 8 || my_basestat(my_primestat()) < 25)
+	{
+		return false;
+	}
+	if (status == 9)
+	{
+		nemesisVisitGuild();
+		return internalQuestStatus("questG04Nemesis") > 9;
+	}
+	if (status == 10 || status == 11)	// the door opens to your class's guild skill
+	{
+		skill[class] doorSkill = {
+			$class[Seal Clubber] : $skill[Wrath of the Wolverine],
+			$class[Turtle Tamer] : $skill[Amphibian Sympathy],
+			$class[Pastamancer] : $skill[Entangling Noodles],
+			$class[Sauceror] : $skill[Stream of Sauce],
+			$class[Disco Bandit] : $skill[Disco State of Mind],
+			$class[Accordion Thief] : $skill[Accordion Bash]
+		};
+		string[class] doorText = {
+			$class[Seal Clubber] : "Freak",
+			$class[Turtle Tamer] : "Sympathize",
+			$class[Pastamancer] : "Entangle",
+			$class[Sauceror] : "Shoot",
+			$class[Disco Bandit] : "Focus",
+			$class[Accordion Thief] : "Bash"
+		};
+		skill sk = doorSkill[my_class()];
+		if (!have_skill(sk))
+		{
+			auto_log_info("Nemesis: buying " + sk + " from the guild to open the cave door.", "blue");
+			visit_url("guild.php?action=buyskill&skillid=" + (sk.to_int() % 1000));
+			if (!have_skill(sk))
+			{
+				auto_log_warning("Nemesis: couldn't buy " + sk + " (meat?); the cave waits.", "red");
+				return false;
+			}
+		}
+		visit_url("place.php?whichplace=mountains&action=mts_caveblocked");
+		foreach option, text in available_choice_options()
+		{
+			if (text.contains_text(doorText[my_class()]))
+			{
+				run_choice(option);
+				break;
+			}
+		}
+		cli_execute("refresh quests");
+		return true;
+	}
+	if (status >= 12 && status <= 14)	// six fizzing spore pods from the Fungal Nethers blow up the rubble
+	{
+		if (item_amount($item[fizzing spore pod]) < 6)
+		{
+			auto_log_info("Nemesis: collecting fizzing spore pods (" + item_amount($item[fizzing spore pod]) + "/6).", "blue");
+			return autoAdv($location[The Fungal Nethers]);
+		}
+		visit_url("place.php?whichplace=nemesiscave&action=nmcave_rubble");
+		run_choice(1);
+		cli_execute("refresh quests");
+		return true;
+	}
+	if (status == 15)
+	{
+		auto_log_info("Nemesis: fighting your Nemesis in the cave.", "blue");
+		return autoAdvBypass("place.php?whichplace=nemesiscave&action=nmcave_boss");
+	}
+	if (status == 16)
+	{
+		nemesisVisitGuild();	// the assassins start after this
+		return true;
+	}
+	return false;
+}
+
 boolean LX_NemesisQuest()
 {
 	if (LX_guildUnlock() || LX_acquireEpicWeapon())
 	{
 		return true;
 	}
-	return false;
+	if (!auto_nemesisInRun())
+	{
+		return false;
+	}
+	int status = internalQuestStatus("questG04Nemesis");
+	if (status < 5 || status > 16)
+	{
+		return false;	// not started, or the assassins are already on their way (they find you as wanderers)
+	}
+	return LX_nemesisLegendaryEpicWeapon(status) || LX_nemesisCave(status);
 }
 
 void houseUpgrade()

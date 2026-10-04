@@ -164,6 +164,13 @@ boolean auto_run_choice(int choice, string page)
 		case 149: // How Many Corners Does this Stupid Barn Have!? (McMillicancuddy's Barn)
 			run_choice(2); // open the other back 40
 			break;
+		case 151: // Adventurer, $1.99 (The "Fun" House)
+			// fight the Clownlord Beelzebozo for the nemesis quest when clownish enough, otherwise skip
+			run_choice(numeric_modifier("Clowniness") >= 100 && internalQuestStatus("questG04Nemesis") == 5 ? 1 : 2);
+			break;
+		case 152: // Lurking at the Threshold (The "Fun" House)
+			run_choice(internalQuestStatus("questG04Nemesis") == 5 ? 1 : 2);
+			break;
 		case 153: // Turn Your Head and Coffin (The Defiled Alcove)
 		case 155: // Skull, Skull, Skull (The Defiled Nook)
 		case 157: // Urning Your Keep (The Defiled Niche)
