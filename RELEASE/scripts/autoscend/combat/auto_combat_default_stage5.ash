@@ -1009,6 +1009,13 @@ string auto_combatDefaultStage5(int round, monster enemy, string text)
 		return attackMajor;
 	}
 
+	// finish with something smaller when the damage seen so far says it will kill (e.g. a weapon attack, not Saucegeyser)
+	string cheapKill = auto_cheapestKill(enemy, costMinor);
+	if(cheapKill != "")
+	{
+		return cheapKill;
+	}
+
 	if(canUse($skill[Lunge Smack], false) && (attackMinor != "attack with weapon") && (weapon_type(equipped_item($slot[weapon])) == $stat[Muscle]))
 	{
 		return attackMinor;

@@ -5,7 +5,11 @@
 #####################################################
 //defined in /autoscend/combat/auto_combat.ash
 void auto_combatInitialize(int round, monster enemy, string text);
-string auto_combatHandler(int round, monster enemy, string text);		
+string auto_combatHandler(int round, monster enemy, string text);
+void auto_damageObserve(int round);
+void auto_damageNoteAction(string action);
+int auto_damageEstimate(string key);
+string auto_cheapestKill(monster enemy, int costToBeat);		
 
 #####################################################
 //defined in /autoscend/combat/auto_combat_util.ash

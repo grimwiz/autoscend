@@ -77,7 +77,7 @@ void auto_combatInitialize(int round, monster enemy, string text)
 	auto_log_info(tolog, "blue");
 }
 
-string auto_combatHandler(int round, monster enemy, string text)
+string auto_combatHandlerChoose(int round, monster enemy, string text)
 {
 	if(round > defaultRoundLimit() && !($monsters[The Man, The Big Wisniewski] contains enemy))	//war bosses can go to round 50
 	{
@@ -198,4 +198,14 @@ string auto_combatHandler(int round, monster enemy, string text)
 	
 	abort("We reached the end of combat script without finding anything to do");
 	return "";
+}
+
+// Records what each action did to the monster (auto_damageObserve), so the kill stage can pick the cheapest action
+// that will finish it (auto_cheapestKill).
+string auto_combatHandler(int round, monster enemy, string text)
+{
+	auto_damageObserve(round);
+	string retval = auto_combatHandlerChoose(round, enemy, text);
+	auto_damageNoteAction(retval);
+	return retval;
 }

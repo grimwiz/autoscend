@@ -1315,3 +1315,140 @@ int auto_remainingMildEvilUses()
 	if (!have_skill($skill[perpetrate mild evil])) { return 0; }
 	return 3-get_property("_mildEvilPerpetrated").to_int();
 }
+
+// ---- Damage seen per action, for finishing monsters cheaply ----
+// auto_damageSeen = "<ascension>|attack:12,0,15;Saucestorm:48,51" -- newest first, the last 10 rounds per action.
+// A round's damage is the drop in monster HP after the action, so it includes misses (0) and passive damage.
+
+string[string] auto_damageSeenMap()
+{
+	string[string] seen;
+	string raw = get_property("auto_damageSeen");
+	string prefix = my_ascensions() + "|";
+	if(index_of(raw, prefix) != 0)
+	{
+		return seen;	// nothing yet this ascension: older numbers are for a different level and class
+	}
+	foreach i, entry in split_string(substring(raw, length(prefix)), ";")
+	{
+		int colon = index_of(entry, ":");
+		if(colon > 0)
+		{
+			seen[substring(entry, 0, colon)] = substring(entry, colon + 1);
+		}
+	}
+	return seen;
+}
+
+void auto_damageObserve(int round)
+{
+	string key = get_property("_auto_combatTracker_lastAction");
+	int before = get_property("_auto_combatTracker_lastMonsterHP").to_int();
+	remove_property("_auto_combatTracker_lastAction");
+	if(round == 0 || key == "" || before <= 0)
+	{
+		return;
+	}
+	int mortarRound = get_property("_auto_combatTracker_MortarRound").to_int();
+	if(mortarRound > -1 && mortarRound == round - 2)
+	{
+		return;	// a Stuffed Mortar Shell landed in that round as well
+	}
+	string[string] seen = auto_damageSeenMap();
+	string vals = max(0, before - monster_hp()).to_string();
+	int kept = 1;
+	foreach i, v in split_string(seen[key], ",")
+	{
+		if(v != "" && kept < 10)
+		{
+			vals += "," + v;
+			kept++;
+		}
+	}
+	seen[key] = vals;
+	string out = my_ascensions() + "|";
+	boolean first = true;
+	foreach k, v in seen
+	{
+		out += (first ? "" : ";") + k + ":" + v;
+		first = false;
+	}
+	set_property("auto_damageSeen", out);
+}
+
+void auto_damageNoteAction(string action)
+{
+	string key = "";
+	if(action == "attack" || action == "attack with weapon")
+	{
+		key = "attack";
+	}
+	else if(index_of(action, "skill ") == 0)
+	{
+		key = substring(action, 6);
+	}
+	set_property("_auto_combatTracker_lastAction", key);
+	set_property("_auto_combatTracker_lastMonsterHP", monster_hp());
+}
+
+// The second-lowest of the recent results: ignores criticals and allows for an occasional miss. -1 until 4 are seen.
+int auto_damageEstimate(string key)
+{
+	string[string] seen = auto_damageSeenMap();
+	int[int] vals;
+	int n = 0;
+	foreach i, v in split_string(seen[key], ",")
+	{
+		if(v != "")
+		{
+			vals[n] = v.to_int();
+			n++;
+		}
+	}
+	if(n < 4)
+	{
+		return -1;
+	}
+	sort vals by value;
+	return vals[1];
+}
+
+// The cheapest action that the damage seen so far says will kill the monster now, if it saves at least 3 MP over
+// costToBeat. A weapon attack is free; then damage spells in MP order. "" when nothing qualifies.
+string auto_cheapestKill(monster enemy, int costToBeat)
+{
+	int hp = monster_hp();
+	if(hp <= 0 || costToBeat < 3 || !canSurvive(2.0))
+	{
+		return "";
+	}
+	if(enemy.physical_resistance < 30 && auto_damageEstimate("attack") >= hp)
+	{
+		return "attack with weapon";
+	}
+	skill best = $skill[none];
+	foreach sk in $skills[Spaghetti Spear, Stream of Sauce, Ravioli Shurikens, Saucestorm, Wave of Sauce, Cannelloni Cannon, Saucecicle, Weapon of the Pastalord, Saucegeyser, Northern Explosion]
+	{
+		if(!canUse(sk, false) || my_mp() < mp_cost(sk) || mp_cost(sk) > costToBeat - 3)
+		{
+			continue;
+		}
+		if($skills[Stream of Sauce, Wave of Sauce] contains sk && monster_element(enemy) == $element[hot])
+		{
+			continue;
+		}
+		if($skills[Saucecicle, Northern Explosion] contains sk && monster_element(enemy) == $element[cold])
+		{
+			continue;
+		}
+		if(auto_damageEstimate(sk.name) >= hp && (best == $skill[none] || mp_cost(sk) < mp_cost(best)))
+		{
+			best = sk;
+		}
+	}
+	if(best == $skill[none])
+	{
+		return "";
+	}
+	return useSkill(best, false);
+}
