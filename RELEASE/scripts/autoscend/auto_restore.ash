@@ -2116,11 +2116,13 @@ boolean acquireHP(int goal, int meat_reserve, boolean useFreeRests)
 	}
 	else
 	{
-		// Simplifies restoration massively, make that our first choice
+		// Simplifies restoration massively, make that our first choice -- but only for a big gap. Cocoon costs 20 MP
+		// whatever it heals; for a small gap a cheaper heal (Disco Nap, Tongue of the Walrus, ...) does the job and
+		// __restore below picks it. Run 99 cast Cocoon to heal 29-79 HP with MP bought from Doc Galaktik.
 		if (have_skill($skill[Cannelloni Cocoon]))
 		{
 			int coc_tries = 0;
-			while (goal-my_hp() > 20 && coc_tries++ < 3)
+			while (goal-my_hp() >= 100 && coc_tries++ < 3)
 			{
 				use_skill($skill[Cannelloni Cocoon]);
 			}
