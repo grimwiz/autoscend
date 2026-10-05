@@ -611,6 +611,48 @@ boolean auto_pearlForMeat()
 	return autosell(1, pearl);
 }
 
+// Once per level in Ronin: ask the maximizer, with Hagnk's included, whether pulling one piece of equipment would
+// improve the gear autoscend is currently after, and pull and wear the best one. Items pulled at level 1 are often
+// outgrown by level 7, so this keeps the gear current as the run goes. Keeps auto_levelUpPullReserve pulls (5) for
+// planned pulls, needs a score gain of at least auto_levelUpPullMinScore (5), never buys (no "buy & pull").
+// auto_levelUpPulls = false turns it off.
+void auto_levelUpPull()
+{
+	if(get_property("auto_levelUpPulls") == "false" || in_hardcore() || can_interact())
+	{
+		return;
+	}
+	string key = my_ascensions() + ":" + my_level();
+	if(get_property("auto_levelUpPullDone") == key)
+	{
+		return;
+	}
+	set_property("auto_levelUpPullDone", key);
+	int reserve = get_property("auto_levelUpPullReserve") == "" ? 5 : get_property("auto_levelUpPullReserve").to_int();
+	string statement = get_property("auto_maximize_current");
+	if(pulls_remaining() <= reserve || statement == "")
+	{
+		return;
+	}
+	float best = get_property("auto_levelUpPullMinScore") == "" ? 5.0 : get_property("auto_levelUpPullMinScore").to_float();
+	string command = "";
+	string what = "";
+	foreach i, entry in maximize(statement, 0, 0, 2, "equip")
+	{
+		if(entry.command.contains_text("pull ") && !entry.command.contains_text("buy") && entry.score > best)
+		{
+			best = entry.score;
+			command = entry.command;
+			what = entry.display;
+		}
+	}
+	if(command != "")
+	{
+		auto_log_info("Level " + my_level() + ": the best pull for the current gear is " + what + " (score +" + best + ").", "blue");
+		cli_execute(command);
+	}
+}
+
 int handlePulls(int day)
 {
 	if(item_amount($item[Astral Six-Pack]) > 0)

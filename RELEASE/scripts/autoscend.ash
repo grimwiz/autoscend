@@ -1957,6 +1957,7 @@ boolean doTasks()
 	finishBuildingSmutOrcBridge();
 	councilMaintenance();
 	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl beats many pulls of Meat
+	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear
 	auto_buySkills();		// formerly picky_buyskills() now moved here
 	awol_buySkills();
 	awol_useStuff();
