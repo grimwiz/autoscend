@@ -1029,7 +1029,7 @@ boolean auto_pre_adventure()
 	borisWastedMP();
 	borisTrusty();
 
-	int mpNeeded = 32; // enough for 5 casts of Saucestorm. Usually this should be fine for most combats
+	int mpNeeded = auto_combatMpNeeded(); // 5 Saucestorms for most classes; less for cheap-skill classes
 	switch (my_class())
 	{
 		// expand this for other cases where we need more MP for combat.

@@ -1,3 +1,21 @@
+// MP to keep for combat before each adventure. Classes that fight with cheap skills (Seal Clubber's Lunge Smack,
+// Turtle Tamer's) need far less than the 5 Saucestorms other classes keep.
+int auto_combatMpNeeded()
+{
+	if($classes[Seal Clubber, Turtle Tamer] contains my_class())
+	{
+		return 10;
+	}
+	return 32; // enough for 5 casts of Saucestorm. Usually this should be fine for most combats
+}
+
+// true while the post-adventure script tops up routine buffs
+boolean auto_routineBuffing = false;
+
+// Buffs that move the run along, which routine buffing may still spend reserve MP on.
+boolean[effect] auto_progressBuffs = $effects[Ode to Booze, The Sonata of Sneakiness, Smooth Movements, Musk of the Moose,
+	Carlweather's Cantata of Confrontation];
+
 boolean buffMaintain(skill source, effect buff, item mustEquip, int mp_min, int casts, int turns, boolean speculative)
 {
 	if(!glover_usable(buff))
@@ -11,6 +29,14 @@ boolean buffMaintain(skill source, effect buff, item mustEquip, int mp_min, int 
 	}
 
 	if((my_mp() < mp_min) || (my_mp() < (casts * mp_cost(source))))
+	{
+		return false;
+	}
+	// Routine buffs spend only MP above the combat reserve. Otherwise each cast is bought back before the next
+	// adventure (Doc Galaktik's tonics, ~8.5 Meat per MP): run 99's Seal Clubber bought 86 in 160 turns that way
+	// and ran out of Meat on day 1. auto_buffSurplusMpOnly = false turns this off.
+	if(auto_routineBuffing && get_property("auto_buffSurplusMpOnly") != "false" && !(auto_progressBuffs contains buff)
+		&& (my_mp() - casts * mp_cost(source)) < auto_combatMpNeeded())
 	{
 		return false;
 	}

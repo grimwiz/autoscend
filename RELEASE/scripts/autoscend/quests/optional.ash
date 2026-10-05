@@ -600,16 +600,17 @@ boolean LX_galaktikSubQuest()
 	if(finishGalaktikSubQuest()) return true;	//always turn the quest in if possible
 	considerGalaktikSubQuest();					//if allowed will automatically enable the quest in some cases
 	
+	if(!get_property("auto_doGalaktik").to_boolean())
+	{
+		return false;		//by default we do not want to do this quest.
+	}
+	//start it first: checking for "in progress" before starting meant an unstarted quest was never started
+	if(startGalaktikSubQuest()) return true;	//always start the quest if available
 	if(internalQuestStatus("questM24Doc") != 0)
 	{
 		//questM24Doc is used by mafia to track progress. step1 means you have the flowers and need to turn them in. 0 means started but incomplete.
 		return false;	
 	}
-	if(!get_property("auto_doGalaktik").to_boolean())
-	{
-		return false;		//by default we do not want to do this quest.
-	}
-	if(startGalaktikSubQuest()) return true;	//always start the quest if available
 
 	return autoAdv($location[The Overgrown Lot]);
 }

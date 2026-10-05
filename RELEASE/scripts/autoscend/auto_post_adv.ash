@@ -1167,10 +1167,12 @@ void main()
 	boolean ret = false;
 	try
 	{
+		auto_routineBuffing = true;	// routine buffs here spend only surplus MP (see buffMaintain)
 		ret = auto_post_adventure();
 	}
 	finally
 	{
+		auto_routineBuffing = false;
 		if (!ret)
 		{
 			auto_log_error("Error running auto_post_adv.ash, setting auto_interrupt=true");

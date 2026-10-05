@@ -1589,6 +1589,7 @@ boolean acquireHermitItem(item it);
 boolean pull_meat(int target);
 int handlePulls(int day);
 boolean auto_pearlForMeat();
+int auto_combatMpNeeded();
 void auto_levelUpPull();
 boolean LX_craftAcquireItems();
 
