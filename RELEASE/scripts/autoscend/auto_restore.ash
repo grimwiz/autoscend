@@ -1668,6 +1668,13 @@ boolean __restore(string resource_type, int goal, int meat_reserve, boolean useF
 				auto_log_error("Ignoring the error as per user instructions");
  				return false;
 			}
+			// Short of MP, combat falls back to attacking: a slower fight beats stopping the run. (Short of HP still
+			// stops, since that risks dying.) auto_abortOnMpRestoreFailure = true restores the old behaviour.
+			if(resource_type == "mp" && !get_property("auto_abortOnMpRestoreFailure").to_boolean())
+			{
+				auto_log_warning("Carrying on with " + my_mp() + " MP: combat will attack instead of casting.", "red");
+				return false;
+			}
 			print("Aborting due to restore failure... you can override this setting for today by entering in gCLI:" ,"blue");
 			print("set _auto_ignoreRestoreFailureToday = true" ,"blue");
 			print("You can override this setting forever by entering in gCLI:" ,"blue");

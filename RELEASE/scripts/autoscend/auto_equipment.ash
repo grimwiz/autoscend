@@ -534,7 +534,21 @@ string defaultMaximizeStatement()
 	else
 	{
 		res += ",0.4hp,0.2mp 1000max";
-		res += isActuallyEd() ? ",6mp regen" : ",3mp regen";
+		// MP regeneration gear pays for MP that would otherwise be bought (Doc Galaktik's tonics, ~8.5 Meat per MP),
+		// and running out of MP or Meat stops the run. Saucerors (Curse of Weaksauce) and Pastamancers (magical mystery
+		// juice) have cheap MP; everyone else weights regen higher, and higher still when Meat is short.
+		if(isActuallyEd())
+		{
+			res += ",6mp regen";
+		}
+		else if($classes[Sauceror, Pastamancer] contains my_class())
+		{
+			res += ",3mp regen";
+		}
+		else
+		{
+			res += my_meat() < 2000 ? ",12mp regen" : ",8mp regen";
+		}
 	}
 	if(in_bhy())
 	{
