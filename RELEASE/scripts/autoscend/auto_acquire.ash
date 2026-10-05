@@ -591,6 +591,26 @@ boolean pull_meat(int target)
 	return my_meat() >= target;
 }
 
+// Low on meat in Ronin: pull an unblemished pearl and autosell it, one pull for 11,037 Meat (pulling Meat itself
+// takes a pull per 1,000). Below auto_pearlMeatBelow Meat (default 2000); auto_pearlForMeat = false turns it off.
+// Only ever pulls a pearl already in Hagnk's, never buys one.
+boolean auto_pearlForMeat()
+{
+	item pearl = $item[unblemished pearl];
+	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
+	if(get_property("auto_pearlForMeat") == "false" || in_hardcore() || can_interact() || my_meat() >= below
+		|| pulls_remaining() == 0 || storage_amount(pearl) == 0 || !auto_is_valid(pearl))
+	{
+		return false;
+	}
+	if(!pullXWhenHaveY(pearl, 1, item_amount(pearl) + equipped_amount(pearl)) || item_amount(pearl) == 0)
+	{
+		return false;
+	}
+	auto_log_info("Only " + my_meat() + " Meat: pulled an unblemished pearl to autosell for " + autosell_price(pearl) + ".", "blue");
+	return autosell(1, pearl);
+}
+
 int handlePulls(int day)
 {
 	if(item_amount($item[Astral Six-Pack]) > 0)

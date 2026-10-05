@@ -1588,6 +1588,7 @@ boolean auto_hermit(int amt, item it);
 boolean acquireHermitItem(item it);
 boolean pull_meat(int target);
 int handlePulls(int day);
+boolean auto_pearlForMeat();
 boolean LX_craftAcquireItems();
 
 ########################################################################################################
