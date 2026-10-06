@@ -1232,7 +1232,7 @@ boolean LX_nemesisLegendaryEpicWeapon(int status)
 boolean LX_nemesisCave(int status)
 {
 	// the cave quest is offered at 23 base mainstat; its mushrooms and your Nemesis are best met from level 8
-	if (my_level() < 8 || my_basestat(my_primestat()) < 25)
+	if (my_level() < 8 || my_basestat(my_primestat()) < 25 || get_property("_auto_nemesisCaveBlocked").to_boolean())
 	{
 		return false;
 	}
@@ -1280,7 +1280,13 @@ boolean LX_nemesisCave(int status)
 			}
 		}
 		cli_execute("refresh quests");
-		return true;
+		if (internalQuestStatus("questG04Nemesis") > status)
+		{
+			return true;
+		}
+		// Mafia sets step 11 on seeing the door and step 12 only once you're inside, so an open door still reads as
+		// 11 (and offers no choice any more). Go on to the Fungal Nethers: adventuring there gets us inside.
+		status = 12;
 	}
 	if (status >= 12 && status <= 14)	// six fizzing spore pods from the Fungal Nethers blow up the rubble
 	{
@@ -1291,7 +1297,14 @@ boolean LX_nemesisCave(int status)
 			auto_log_info("Nemesis: collecting fizzing spore pods (" + item_amount($item[fizzing spore pod]) + "/6).", "blue");
 			provideItem(50, $location[The Fungal Nethers], true);
 			addToMaximize("100item 50max");
-			return autoAdv($location[The Fungal Nethers]);
+			if (autoAdv($location[The Fungal Nethers]))
+			{
+				return true;
+			}
+			// never report success without a turn or a quest step, or the task list repeats this forever
+			auto_log_warning("Nemesis: couldn't get into the Fungal Nethers; leaving the cave until tomorrow.", "red");
+			set_property("_auto_nemesisCaveBlocked", true);
+			return false;
 		}
 		visit_url("place.php?whichplace=nemesiscave&action=nmcave_rubble");
 		run_choice(1);
