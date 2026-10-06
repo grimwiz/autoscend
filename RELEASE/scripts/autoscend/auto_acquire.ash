@@ -222,6 +222,65 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
+// Make an item from ingredients in inventory or Hagnk's instead of pulling or buying it, when its mall price is more
+// than auto_pullValue (1,000) Meat per pull the ingredients need. A stored item counts at its price too: pulling a
+// 6,000 Meat wet stew uses up 6,000 Meat of stock, where bird rib + lion oil cost 2 pulls. Ingredients already in
+// inventory need no pulls, so those are always used. Plain recipes only (meat paste, cooking with an oven, mixing
+// with a cocktail kit), one level deep, and ingredients are never bought.
+boolean auto_craftInsteadOfPull(item it, int howMany)
+{
+	string how = craft_type(it);
+	boolean haveOven = get_property("auto_haveoven").to_boolean() || (auto_get_campground() contains $item[Dramatic&trade; range]);
+	if(!(how == "Meatpasting" || (how == "Cooking" && haveOven) || (how == "Mixing" && get_property("hasCocktailKit").to_boolean())))
+	{
+		return false;
+	}
+	int[item] ingredients = get_ingredients(it);
+	if(count(ingredients) == 0)
+	{
+		return false;
+	}
+	int[item] toPull;
+	int pulls = 0;
+	foreach ing, amt in ingredients
+	{
+		int need = amt * howMany - item_amount(ing);
+		if(need <= 0)
+		{
+			continue;
+		}
+		if(storage_amount(ing) < need || !canPull(ing))
+		{
+			return false;
+		}
+		toPull[ing] = need;
+		pulls += need;
+	}
+	if(pulls_remaining() >= 0 && pulls > pulls_remaining())	// -1 means unlimited
+	{
+		return false;
+	}
+	int price = auto_mall_price(it);
+	int pullValue = get_property("auto_pullValue") == "" ? 1000 : get_property("auto_pullValue").to_int();
+	if(pulls > 0 && price <= pulls * pullValue)
+	{
+		return false;
+	}
+	auto_log_info("Making " + howMany + " " + it + " (" + how + ", " + pulls + " pull(s) of ingredients) rather than pulling or buying it at " + price + " Meat.", "blue");
+	foreach ing, need in toPull
+	{
+		if(!take_storage(need, ing))
+		{
+			return false;
+		}
+		for(int i = 0; i < need; ++i)
+		{
+			handleTracker(ing, "auto_pulls");
+		}
+	}
+	return create(howMany, it);
+}
+
 // Get a wet stew's worth by pulling rather than buying. Bird rib + lion oil cook into wet stew for free
 // (makeWetStuntNutStew does it), so ingredients in Hagnk's cost 2 pulls instead of a 4,000-6,000 Meat stew,
 // and one ingredient held halves the Whitey's Grove farm for the other. Buys a stew only when neither is stored.
@@ -262,6 +321,10 @@ boolean pullXWhenHaveY(item it, int howMany, int whenHave)
 	}
 	if((item_amount(it) + equipped_amount(it)) == whenHave)
 	{
+		if(auto_craftInsteadOfPull(it, howMany))
+		{
+			return true;
+		}
 		int lastStorage = storage_amount(it);
 		while(storage_amount(it) < howMany)
 		{

@@ -1577,6 +1577,7 @@ int auto_mall_price(item it);
 boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave);
 boolean pullXWhenHaveY(item it, int howMany, int whenHave);
 boolean auto_pullWetStew();
+boolean auto_craftInsteadOfPull(item it, int howMany);
 boolean pulverizeThing(item it);
 boolean buyableMaintain(item toMaintain, int howMany);
 boolean buyableMaintain(item toMaintain, int howMany, int meatMin);
