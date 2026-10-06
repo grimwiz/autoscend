@@ -1270,14 +1270,26 @@ boolean LX_nemesisCave(int status)
 				return false;
 			}
 		}
+		// Opening the door is a two-page choice: the class option ("Freak the hell out..."), then "Enter the doorway."
+		// Run 99 stopped after the first page and sat on the second, so keep choosing until the chain ends. Visiting
+		// the door while that page is pending just shows it again, which also resumes a half-finished entry.
 		visit_url("place.php?whichplace=mountains&action=mts_caveblocked");
-		foreach option, text in available_choice_options()
+		for (int page = 0; page < 4; page++)
 		{
-			if (text.contains_text(doorText[my_class()]))
+			int pick = 0;
+			foreach option, text in available_choice_options()
 			{
-				run_choice(option);
+				if (text.contains_text(doorText[my_class()]) || text.contains_text("Enter the doorway"))
+				{
+					pick = option;
+					break;
+				}
+			}
+			if (pick == 0)
+			{
 				break;
 			}
+			run_choice(pick);
 		}
 		cli_execute("refresh quests");
 		if (internalQuestStatus("questG04Nemesis") > status)
