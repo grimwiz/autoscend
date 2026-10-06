@@ -222,6 +222,34 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
+// Get a wet stew's worth by pulling rather than buying. Bird rib + lion oil cook into wet stew for free
+// (makeWetStuntNutStew does it), so ingredients in Hagnk's cost 2 pulls instead of a 4,000-6,000 Meat stew,
+// and one ingredient held halves the Whitey's Grove farm for the other. Buys a stew only when neither is stored.
+boolean auto_pullWetStew()
+{
+	if(item_amount($item[wet stew]) > 0 || (item_amount($item[bird rib]) > 0 && item_amount($item[lion oil]) > 0))
+	{
+		return false;
+	}
+	if(storage_amount($item[wet stew]) > 0)
+	{
+		return pullXWhenHaveY($item[wet stew], 1, 0);
+	}
+	boolean pulled = false;
+	foreach it in $items[bird rib, lion oil]
+	{
+		if(item_amount(it) == 0 && storage_amount(it) > 0)		// in storage, so this pulls and never buys
+		{
+			pulled = pullXWhenHaveY(it, 1, 0) || pulled;
+		}
+	}
+	if(pulled || item_amount($item[bird rib]) > 0 || item_amount($item[lion oil]) > 0)
+	{
+		return pulled;	// farm whatever is still missing rather than buying a whole stew
+	}
+	return pullXWhenHaveY($item[wet stew], 1, 0);
+}
+
 boolean pullXWhenHaveY(item it, int howMany, int whenHave)
 {
 	if(can_interact())
@@ -712,13 +740,10 @@ int handlePulls(int day)
 				}
 			}
 			
-			// get a wet stew
-			foreach it in $items[wet stew]
+			// get a wet stew, or its ingredients
+			if (!pulledToday($item[wet stew]))
 			{
-				if (!pulledToday(it))
-				{
-					pullXWhenHaveY(it, 1, 0);
-				}
+				auto_pullWetStew();
 			}
 		}
 

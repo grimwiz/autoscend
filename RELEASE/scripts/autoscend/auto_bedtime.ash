@@ -558,7 +558,7 @@ void bedtime_pulls()
 	}
 	if(item_amount($item[Wet Stunt Nut Stew]) == 0 && !possessEquipment($item[Mega Gem]) && !isActuallyEd())
 	{
-		pullXWhenHaveY($item[wet stew], 1, 0);
+		auto_pullWetStew();
 	}
 	if(!black_market_available() && !in_lol())
 	{
