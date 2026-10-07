@@ -2122,7 +2122,8 @@ boolean acquireHP(int goal, int meat_reserve, boolean useFreeRests)
 		if (have_skill($skill[Cannelloni Cocoon]))
 		{
 			int coc_tries = 0;
-			while (goal-my_hp() >= 100 && coc_tries++ < 3)
+			// only on MP we already have: short of it, KoLmafia would restore MP first, possibly by resting
+			while (goal-my_hp() >= 100 && my_mp() >= mp_cost($skill[Cannelloni Cocoon]) && coc_tries++ < 3)
 			{
 				use_skill($skill[Cannelloni Cocoon]);
 			}

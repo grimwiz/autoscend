@@ -2181,6 +2181,24 @@ void auto_begin()
 	backupSetting("hpAutoRecoveryTarget", -0.05);
 	backupSetting("mpAutoRecovery", -0.05);
 	backupSetting("mpAutoRecoveryTarget", -0.05);
+	// KoLmafia restores MP before any skill cast that lacks it, whatever the targets above, using these lists. Sleeping
+	// on the clan sofa or resting at the campground (once free rests are gone) costs adventures: run 99 spent 4 turns
+	// on the sofa to cast Cannelloni Cocoon. autoscend uses free rests itself.
+	foreach prop in $strings[hpAutoRecoveryItems, mpAutoRecoveryItems]
+	{
+		string kept = "";
+		foreach i, option in split_string(get_property(prop), ";")
+		{
+			if(option != "sleep on your clan sofa" && option != "rest at your campground" && option != "")
+			{
+				kept += (kept == "" ? "" : ";") + option;
+			}
+		}
+		if(kept != get_property(prop))
+		{
+			backupSetting(prop, kept);
+		}
+	}
 	backupSetting("manaBurningTrigger", -0.05);
 	backupSetting("manaBurningThreshold", -0.05);
 	backupSetting("autoAbortThreshold", -0.05);
