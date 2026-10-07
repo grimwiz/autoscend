@@ -1887,7 +1887,9 @@ boolean L11_hiddenCity()
 	//can we handle this zone?
 	if(!in_pokefam() && !in_darkGyffte() && !in_aosol() && !in_wereprof())
 	{
-		if(!acquireHP())	//try to restore HP to max.
+		// heal at 75% like pre-adventure, not to full before every turn: run 99 healed small scratches with MP bought
+		// from Doc Galaktik on each of 77 Hidden City turns, and was never beaten up
+		if(my_hp() < 0.75 * my_maxhp() && !acquireHP())
 		{
 			auto_log_warning("Delaying hidden city because we are unable to restore HP");
 			return false;		//could not heal HP. we should go do something else first
@@ -1899,7 +1901,14 @@ boolean L11_hiddenCity()
 	}
 	
 	int weapon_ghost_dmg = numeric_modifier("hot damage") + numeric_modifier("cold damage") + numeric_modifier("stench damage") + numeric_modifier("sleaze damage") + numeric_modifier("spooky damage");
-	if(!in_robot() &&
+	// the Protector Spectre is met only in A Massive Ziggurat, once all four shrines are done (progress 8). Topping MP up
+	// to 30 before every Hidden City turn bought ~70 tonics in run 99 for the one spectre fight.
+	boolean zigguratNext = true;
+	foreach prop in $strings[hiddenApartmentProgress, hiddenOfficeProgress, hiddenHospitalProgress, hiddenBowlingAlleyProgress]
+	{
+		zigguratNext = zigguratNext && get_property(prop).to_int() >= 8;
+	}
+	if(!in_robot() && zigguratNext &&
 	!in_darkGyffte() &&
 	weapon_ghost_dmg < 20 &&				//we can not rely on melee/ranged weapon to kill the ghost
 	!acquireMP(30, 0))						//try getting some MP, relying on a spell to kill them instead. TODO verify we have a spell
