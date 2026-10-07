@@ -1,12 +1,19 @@
-// MP to keep for combat before each adventure. Classes that fight with cheap skills (Seal Clubber's Lunge Smack,
-// Turtle Tamer's) need far less than the 5 Saucestorms other classes keep.
+// MP to keep before each adventure, for combat and the next heal. Classes that fight with cheap skills (Seal Clubber's
+// Lunge Smack, Turtle Tamer's) need far less than the 5 Saucestorms other classes keep. Pre-adventure heals at 75% HP,
+// so the gap is a quarter of max HP: small heals (Disco Nap, 8 MP) cover it at low level, but from 400 max HP it is
+// 100+ HP and Cannelloni Cocoon (20 MP) is the heal, so keep its MP too.
 int auto_combatMpNeeded()
 {
+	int heal = 0;
+	if(auto_have_skill($skill[Cannelloni Cocoon]) && my_maxhp() >= 400)
+	{
+		heal = mp_cost($skill[Cannelloni Cocoon]);
+	}
 	if($classes[Seal Clubber, Turtle Tamer] contains my_class())
 	{
-		return 10;
+		return 10 + heal;
 	}
-	return 32; // enough for 5 casts of Saucestorm. Usually this should be fine for most combats
+	return max(32, 12 + heal); // 32 is enough for 5 casts of Saucestorm. Usually this should be fine for most combats
 }
 
 // true while the post-adventure script tops up routine buffs

@@ -2122,9 +2122,14 @@ boolean acquireHP(int goal, int meat_reserve, boolean useFreeRests)
 		if (have_skill($skill[Cannelloni Cocoon]))
 		{
 			int coc_tries = 0;
-			// only on MP we already have: short of it, KoLmafia would restore MP first, possibly by resting
-			while (goal-my_hp() >= 100 && my_mp() >= mp_cost($skill[Cannelloni Cocoon]) && coc_tries++ < 3)
+			// get the MP through our own restore (tonics, free rests) first: short of it, KoLmafia would restore it
+			// itself before the cast, possibly by resting on the sofa for an adventure
+			while (goal-my_hp() >= 100 && coc_tries++ < 3)
 			{
+				if (my_mp() < mp_cost($skill[Cannelloni Cocoon]) && !acquireMP(mp_cost($skill[Cannelloni Cocoon]), meat_reserve))
+				{
+					break;
+				}
 				use_skill($skill[Cannelloni Cocoon]);
 			}
 		}
