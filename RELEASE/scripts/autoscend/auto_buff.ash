@@ -39,6 +39,13 @@ boolean buffMaintain(skill source, effect buff, item mustEquip, int mp_min, int 
 	{
 		return false;
 	}
+	// Routine buffs are recast only on their last turn: casting earlier just banks duration, spending MP before
+	// regen has had a chance to cover it.
+	if(auto_routineBuffing && get_property("auto_buffSurplusMpOnly") != "false" && !(auto_progressBuffs contains buff)
+		&& have_effect(buff) > 1)
+	{
+		return false;
+	}
 	// Routine buffs spend only MP above the combat reserve. Otherwise each cast is bought back before the next
 	// adventure (Doc Galaktik's tonics, ~8.5 Meat per MP): run 99's Seal Clubber bought 86 in 160 turns that way
 	// and ran out of Meat on day 1. auto_buffSurplusMpOnly = false turns this off.

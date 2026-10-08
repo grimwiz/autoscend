@@ -6164,3 +6164,30 @@ boolean auto_meetsMinimumRequirements()
 	// Otherwise, we just need Saucestorm and Cocoon.
 	return (have_skill($skill[Saucestorm]) && have_skill($skill[Cannelloni Cocoon]));
 }
+
+// The highest ML that is still safe against every monster in this zone, so ordinary fights give as much stat gain as
+// they can (fewer powerlevelling turns). ML adds 1:1 to monster attack, defense and HP. For each monster:
+//  - survive: five of its hits (each about 1.25 damage more per point of ML) fit in 75% of max HP
+//  - hit it: for melee classes, buffed hit stat at least 20 over its defense (autoscend's own threshold)
+// Capped by auto_MLDynamicMax (default 150).
+int auto_safeML(location place)
+{
+	int cap = get_property("auto_MLDynamicMax") == "" ? 150 : get_property("auto_MLDynamicMax").to_int();
+	int ml = monster_level_adjustment();
+	boolean melee = !($classes[Sauceror, Pastamancer] contains my_class());
+	int safe = cap;
+	foreach m, rate in appearance_rates(place)
+	{
+		if(m == $monster[none] || rate <= 0)
+		{
+			continue;
+		}
+		int bySurvival = ml + to_int((0.15 * my_maxhp() - expected_damage(m)) / 1.25);
+		safe = min(safe, bySurvival);
+		if(melee)
+		{
+			safe = min(safe, ml + buffed_hit_stat() - 20 - monster_defense(m));
+		}
+	}
+	return max(0, safe);
+}

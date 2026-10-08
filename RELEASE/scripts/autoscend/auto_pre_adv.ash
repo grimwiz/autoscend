@@ -908,6 +908,28 @@ boolean auto_pre_adventure()
 		}
 	}
 	
+	// Per-zone ML limit: as high as this zone's monsters allow (auto_safeML), written to auto_MLSafetyLimit so every
+	// reader of the limit follows it. The user's own value is kept in auto_MLSafetyLimitUser and put back when
+	// auto_MLDynamic is false.
+	if(get_property("auto_MLSafetyLimitUser") == "")
+	{
+		set_property("auto_MLSafetyLimitUser", get_property("auto_MLSafetyLimit") == "" ? "none" : get_property("auto_MLSafetyLimit"));
+	}
+	if(get_property("auto_MLDynamic") != "false" && !(lowMLZones contains place))
+	{
+		int zoneML = auto_safeML(place);
+		if(zoneML != get_property("auto_MLSafetyLimit").to_int())
+		{
+			auto_log_info("ML limit for " + place + ": " + zoneML, "blue");
+		}
+		set_property("auto_MLSafetyLimit", zoneML);
+	}
+	else if(get_property("auto_MLDynamic") == "false")
+	{
+		string mine = get_property("auto_MLSafetyLimitUser");
+		set_property("auto_MLSafetyLimit", mine == "none" ? "" : mine);
+	}
+
 	// Here we give a limited value to ML if +/-ML is not specifically called in the current maximizer string. This does not enforce the limit.
 	// if the limit setting has no value then ML has already been given a value indirectly by "exp" in the default maximizer statement
 	if((get_property("auto_MLSafetyLimit") != "") && (!contains_text(get_property("auto_maximize_current"), "ml")))
