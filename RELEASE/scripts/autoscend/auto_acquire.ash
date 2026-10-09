@@ -1044,8 +1044,9 @@ int handlePulls(int day)
 		
 	}
 
-	// do this regardless of day if we still need to complete the bridge.
-	if(canPull($item[smut orc keepsake box]) && (get_property("chasmBridgeProgress").to_int() + min(lumberCount(),fastenerCount()) < bridgeGoal()))
+	// do this regardless of day if we still need to complete the bridge -- but only once the Orc Chasm is the quest
+	// (level 9), not from day 1, days before the bridge, spending a pull that day's quests could use
+	if(my_level() >= 9 && canPull($item[smut orc keepsake box]) && (get_property("chasmBridgeProgress").to_int() + min(lumberCount(),fastenerCount()) < bridgeGoal()))
 	{
 		if(pullXWhenHaveY($item[smut orc keepsake box], 1, 0))
 		{
