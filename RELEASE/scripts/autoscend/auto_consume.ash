@@ -1785,7 +1785,20 @@ void auto_drinkNightcap()
 	{
 		abort("Unexpectedly couldn't prep " + to_pretty_string(target));
 	}
-	autoDrink(1, target.it, true); // added a silent flag to autoDrink to avoid the overdrink confirmation popup
+	if(target.cafeId != 0)
+	{
+		// a café drink (e.g. the Gnomish microbrewery under a Gnomad sign) has no item: autoDrink(1, none) did
+		// nothing, so the day ended without the nightcap and without the bedtime pulls that follow it
+		autoConsume(target);
+	}
+	else
+	{
+		autoDrink(1, target.it, true); // added a silent flag to autoDrink to avoid the overdrink confirmation popup
+	}
+	if(!overdrunk())
+	{
+		auto_log_warning("Couldn't drink the nightcap " + to_pretty_string(target) + "; overdrink by hand, then run autoscend again.", "red");
+	}
 	
 	if(overdrunk())
 	{
