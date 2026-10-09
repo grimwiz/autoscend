@@ -2415,3 +2415,56 @@ int auto_getConsumablePriceLimit()
 	}
 	return min(autoscend_max,mafia_max);
 }
+
+// Bedtime: today's unused pulls are lost at rollover, so spend them on tomorrow's food and drink. Pulled items stay in
+// inventory and tomorrow's diet eats them without spending tomorrow's pulls (run 99 left 41 pulls unused and finished
+// 34 adventures short of a 4-day run). For each organ, fill one day's capacity best-first by adventures per organ
+// point: food and drink already held count first, and stored items are pulled where they're better. Takes only what
+// is in Hagnk's (never buys), and nothing under 2 adventures per point.
+void bedtime_pulls_consumables()
+{
+	if(can_interact() || pulls_remaining() <= 0)
+	{
+		return;
+	}
+	foreach type in $strings[food, drink]
+	{
+		ConsumeAction[int] actions;
+		loadConsumables(type, actions);
+		ConsumeAction[int] options;
+		foreach i, action in actions
+		{
+			if(action.it == $item[none] || action.size <= 0 || action.adventures / action.size < 2.0)
+			{
+				continue;
+			}
+			if(action.howToGet == AUTO_OBTAIN_NULL || (action.howToGet == AUTO_OBTAIN_PULL && storage_amount(action.it) > 0))
+			{
+				options[count(options)] = action;
+			}
+		}
+		sort options by -(value.adventures / value.size);
+		int room = (type == "food") ? fullness_limit() : inebriety_limit();
+		foreach i, action in options
+		{
+			if(room <= 0 || pulls_remaining() <= 0)
+			{
+				break;
+			}
+			if(action.size > room)
+			{
+				continue;
+			}
+			if(action.howToGet == AUTO_OBTAIN_PULL)
+			{
+				auto_log_info("Bedtime: pulling " + action.it + " (" + action.adventures + " adventures for " + action.size + " " + (type == "food" ? "fullness" : "inebriety") + ") for tomorrow's diet.", "blue");
+				if(!take_storage(1, action.it))
+				{
+					continue;
+				}
+				handleTracker(action.it, "auto_pulls");
+			}
+			room -= action.size;
+		}
+	}
+}

@@ -577,6 +577,9 @@ void bedtime_pulls()
 		}
 	}
 	
+	//today's leftover pulls on tomorrow's food and drink, before the smaller rollover-gear gains
+	bedtime_pulls_consumables();
+
 	//scan through all pullable items for items that have a better rollover adv gain than currently best equipped item.
 	bedtime_pulls_rollover_equip();
 
