@@ -2229,6 +2229,7 @@ int auto_reserveCraftAmount(item orig_it);
 int auto_convertDesiredML(int DML);
 boolean auto_setMCDToCap();
 int auto_safeML(location place);
+void auto_mlBuffMP(int cap);
 boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit);
 boolean angryAgateCheck(int angryAgateToML, int angryAgateUpperLimit, int angryAgateLowerLimit);
 boolean auto_MaxMLToCap(int ToML, boolean doAltML);

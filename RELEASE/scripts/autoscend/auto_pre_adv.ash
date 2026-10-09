@@ -884,6 +884,7 @@ boolean auto_pre_adventure()
 			auto_log_debug("Delaying debuffing Asdon: " + get_property("auto_debuffAsdonDelay"));
 		}
 
+		auto_mlBuffMP(auto_convertDesiredML(150));	// MP for the ML buffs first: they're cheaper stats than powerlevelling
 		auto_MaxMLToCap(auto_convertDesiredML(150), false);
 	}
 

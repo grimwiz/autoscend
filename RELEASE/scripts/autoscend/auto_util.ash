@@ -4936,6 +4936,36 @@ boolean auto_setMCDToCap()
 	return auto_change_mcd(targetMcd);
 }
 
+// The ML buffs pay for themselves: from runs 99-100, each point of ML adds ~0.26 substats a fight, so Ur-Kel's
+// (30 MP, 10 turns, 2 x level ML) and Drescher's (40 MP, 20 turns, +10 ML) cost ~5 Meat of bought MP per substat,
+// against ~22 for a powerlevelling turn. But with MP held near the combat reserve they were rarely affordable (run 100:
+// 7 Ur-Kel's and 1 Drescher's in 93 turns, MP ~23 before adventures). Before ML is maxed for an adventure, get the MP
+// for each one that's missing and still fits under the zone's ML cap. Below level 13 only (Instant Karma);
+// auto_mlBuffMP = false turns it off.
+void auto_mlBuffMP(int cap)
+{
+	if(my_level() >= 13 || get_property("auto_mlBuffMP") == "false")
+	{
+		return;
+	}
+	int ml = monster_level_adjustment();
+	int need = 0;
+	if(auto_have_skill($skill[Ur-Kel\'s Aria of Annoyance]) && have_effect($effect[Ur-Kel\'s Aria of Annoyance]) == 0 && ml + 2 * my_level() <= cap)
+	{
+		need += mp_cost($skill[Ur-Kel\'s Aria of Annoyance]);
+		ml += 2 * my_level();
+	}
+	if(auto_have_skill($skill[Drescher\'s Annoying Noise]) && have_effect($effect[Drescher\'s Annoying Noise]) == 0 && ml + 10 <= cap)
+	{
+		need += mp_cost($skill[Drescher\'s Annoying Noise]);
+	}
+	int target = min(my_maxmp(), need + auto_combatMpNeeded());
+	if(need > 0 && my_mp() < target)
+	{
+		acquireMP(target, 0);
+	}
+}
+
 // We use this function to determine the suitability of using Ur-Kel's
 boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit)
 {
