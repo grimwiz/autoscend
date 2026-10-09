@@ -1376,9 +1376,10 @@ boolean loadConsumables(string _type, ConsumeAction[int] actions)
 				// don't penalize pulls in small as want best options to utilize limited organs
 				// A pull is worth about 5 adventures while pulls are short, but today's unused pulls are lost at
 				// rollover (run 99 left 41 unused). While more than auto_consumePullReserve (5) remain for quest
-				// pulls, charge 1, so better food and drink get pulled.
+				// pulls, charge 2: a pulled item must add at least 2 adventures (~2,000 Meat of turns) over what's
+				// already held, so a pull isn't spent on a near-equal 100 Meat drink.
 				int pullReserve = get_property("auto_consumePullReserve") == "" ? 5 : get_property("auto_consumePullReserve").to_int();
-				actions[n].desirability -= (pulls_remaining() > pullReserve ? 1.0 : 5.0);
+				actions[n].desirability -= (pulls_remaining() > pullReserve ? 2.0 : 5.0);
 				float user_desirability = get_property("auto_consumePullDesirability").to_float();
 				if (user_desirability > 0.0)
 				{
