@@ -761,19 +761,39 @@ void auto_levelUpPull()
 	float best = get_property("auto_levelUpPullMinScore") == "" ? 5.0 : get_property("auto_levelUpPullMinScore").to_float();
 	string command = "";
 	string what = "";
+	// The familiar slot sat empty all of runs 99 and 100: every familiar item was in Hagnk's, and a familiar item
+	// never beat the one best upgrade picked per level. While it's empty, also pull the best familiar item.
+	float bestFam = 0;
+	string famCommand = "";
+	string famWhat = "";
 	foreach i, entry in maximize(statement, 0, 0, 2, "equip")
 	{
-		if(entry.command.contains_text("pull ") && !entry.command.contains_text("buy") && entry.score > best)
+		if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy"))
+		{
+			continue;
+		}
+		if(entry.score > best)
 		{
 			best = entry.score;
 			command = entry.command;
 			what = entry.display;
+		}
+		if(entry.command.contains_text("familiar") && entry.score > bestFam)
+		{
+			bestFam = entry.score;
+			famCommand = entry.command;
+			famWhat = entry.display;
 		}
 	}
 	if(command != "")
 	{
 		auto_log_info("Level " + my_level() + ": the best pull for the current gear is " + what + " (score +" + best + ").", "blue");
 		cli_execute(command);
+	}
+	if(famCommand != "" && famCommand != command && equipped_item($slot[familiar]) == $item[none] && pulls_remaining() > reserve)
+	{
+		auto_log_info("Level " + my_level() + ": the familiar has nothing to wear; pulling " + famWhat + " (score +" + bestFam + ").", "blue");
+		cli_execute(famCommand);
 	}
 }
 
