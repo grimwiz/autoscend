@@ -758,50 +758,53 @@ void auto_levelUpPull()
 	{
 		return;
 	}
-	float best = get_property("auto_levelUpPullMinScore") == "" ? 5.0 : get_property("auto_levelUpPullMinScore").to_float();
-	string command = "";
-	string what = "";
-	// Empty slots: the familiar slot sat empty all of runs 99 and 100, since every familiar item was in Hagnk's and a
-	// familiar item never beat the one best upgrade picked per level. Fill each empty slot with its best pull too.
+	// For every slot, the best item in Hagnk's and how much it beats what's worn (the maximizer scores each suggestion
+	// as a gain over the current item, so an empty slot -- like the familiar slot all of runs 99 and 100 -- scores its
+	// item's full value). Pull and wear the biggest gains first, each worth at least auto_levelUpPullMinScore,
+	// up to auto_levelUpPullMax (3) a level, keeping the reserve.
+	float minScore = get_property("auto_levelUpPullMinScore") == "" ? 5.0 : get_property("auto_levelUpPullMinScore").to_float();
+	int maxPulls = get_property("auto_levelUpPullMax") == "" ? 3 : get_property("auto_levelUpPullMax").to_int();
 	float[slot] slotBest;
 	string[slot] slotCommand;
 	string[slot] slotWhat;
 	foreach i, entry in maximize(statement, 0, 0, 2, "equip")
 	{
-		if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy"))
+		if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || entry.score <= minScore)
 		{
 			continue;
 		}
-		if(entry.score > best)
-		{
-			best = entry.score;
-			command = entry.command;
-			what = entry.display;
-		}
 		matcher m = create_matcher("equip (\\S+) ", entry.command);
 		slot sl = m.find() ? m.group(1).to_slot() : $slot[none];
-		if(sl != $slot[none] && entry.score > slotBest[sl])
+		// an empty off-hand beside a two-handed weapon is empty on purpose; so is the familiar slot with no familiar
+		if(sl == $slot[none] || (sl == $slot[off-hand] && weapon_hands(equipped_item($slot[weapon])) > 1)
+			|| (sl == $slot[familiar] && my_familiar() == $familiar[none]))
+		{
+			continue;
+		}
+		if(entry.score > slotBest[sl])
 		{
 			slotBest[sl] = entry.score;
 			slotCommand[sl] = entry.command;
 			slotWhat[sl] = entry.display;
 		}
 	}
-	if(command != "")
+	for(int n = 0; n < maxPulls && pulls_remaining() > reserve; n++)
 	{
-		auto_log_info("Level " + my_level() + ": the best pull for the current gear is " + what + " (score +" + best + ").", "blue");
-		cli_execute(command);
-	}
-	foreach sl, cmd in slotCommand
-	{
-		// an empty off-hand beside a two-handed weapon is empty on purpose; so is the familiar slot with no familiar
-		boolean meantEmpty = (sl == $slot[off-hand] && weapon_hands(equipped_item($slot[weapon])) > 1)
-			|| (sl == $slot[familiar] && my_familiar() == $familiar[none]);
-		if(cmd != command && !meantEmpty && equipped_item(sl) == $item[none] && pulls_remaining() > reserve)
+		slot pick = $slot[none];
+		foreach sl, score in slotBest
 		{
-			auto_log_info("Level " + my_level() + ": nothing in the " + sl + " slot; pulling " + slotWhat[sl] + " (score +" + slotBest[sl] + ").", "blue");
-			cli_execute(cmd);
+			if(pick == $slot[none] || score > slotBest[pick])
+			{
+				pick = sl;
+			}
 		}
+		if(pick == $slot[none])
+		{
+			break;
+		}
+		auto_log_info("Level " + my_level() + ": best gain from Hagnk's is " + slotWhat[pick] + " (" + pick + ", score +" + slotBest[pick] + ").", "blue");
+		cli_execute(slotCommand[pick]);
+		remove slotBest[pick];
 	}
 }
 
