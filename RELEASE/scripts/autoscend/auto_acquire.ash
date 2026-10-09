@@ -222,6 +222,27 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
+// When Ronin ends mid-run (turn 1000 before the King is freed), everything in Hagnk's is free to use: quest items,
+// gear, food and drink. Empty it once per ascension (the Casual path already does). Any meat that comes out with it
+// goes straight to the closet, where nothing can spend it (borrowed meat may be stored there).
+void auto_emptyStorageWhenFree()
+{
+	if(!can_interact() || in_hardcore() || get_property("kingLiberated").to_boolean()
+		|| get_property("lastEmptiedStorage").to_int() == my_ascensions())
+	{
+		return;
+	}
+	int meatBefore = my_meat();
+	auto_log_info("Out of Ronin: emptying Hagnk's so stored quest items, gear, food and drink can be used.", "blue");
+	cli_execute("pull all");
+	int moved = my_meat() - meatBefore;
+	if(moved > 0)
+	{
+		put_closet(moved);
+		auto_log_info("Closeted the " + moved + " Meat that came out of Hagnk's.", "blue");
+	}
+}
+
 // Make an item from ingredients in inventory or Hagnk's instead of pulling or buying it, when its mall price is more
 // than auto_pullValue (1,000) Meat per pull the ingredients need. A stored item counts at its price too: pulling a
 // 6,000 Meat wet stew uses up 6,000 Meat of stock, where bird rib + lion oil cost 2 pulls. Ingredients already in
