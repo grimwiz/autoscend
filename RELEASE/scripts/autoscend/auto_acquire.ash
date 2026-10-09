@@ -222,6 +222,26 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
+// The most worth paying to buy a pull: the turns it saves times a turn's value (auto_turnValue, default 1,000 Meat,
+// about what aftercore meat farming earns per adventure), since every turn saved in a run becomes an aftercore turn.
+// Turns saved are estimates from run logs; items without one keep autoBuyPriceLimit.
+int auto_pullPriceCap(item it)
+{
+	int limit = get_property("autoBuyPriceLimit").to_int();
+	float[item] turnsSaved = {
+		$item[smut orc keepsake box] : 4,	// 5 lumber + 4 fasteners; the logging camp gives ~2.3 bridge parts a turn
+		$item[Spooky-Gro fertilizer] : 3,	// one Spooky Forest noncombat, every 2-4 turns there
+		$item[wet stew] : 12,				// bird rib + lion oil in Whitey's Grove, 10-14 turns at +140% item
+		$item[drum machine] : 2				// the Oasis visits for the desert usually drop one anyway
+	};
+	if(!(turnsSaved contains it))
+	{
+		return limit;
+	}
+	int turnValue = get_property("auto_turnValue") == "" ? 1000 : get_property("auto_turnValue").to_int();
+	return min(limit, to_int(turnsSaved[it] * turnValue));
+}
+
 // When Ronin ends mid-run (turn 1000 before the King is freed), everything in Hagnk's is free to use: quest items,
 // gear, food and drink. Empty it once per ascension (the Casual path already does).
 void auto_emptyStorageWhenFree()
@@ -344,7 +364,7 @@ boolean pullXWhenHaveY(item it, int howMany, int whenHave)
 			int oldPrice = historical_price(it) * 1.2;
 			int curPrice = auto_mall_price(it);
 			int meat = my_storage_meat();
-			int priceLimit = get_property("autoBuyPriceLimit").to_int();
+			int priceLimit = auto_pullPriceCap(it);
 			boolean getFromStorage = true;
 			if(can_interact() && (meat < curPrice))
 			{
@@ -353,7 +373,7 @@ boolean pullXWhenHaveY(item it, int howMany, int whenHave)
 			}
 			if(curPrice >= priceLimit)
 			{
-				auto_log_warning(it + " is too expensive at " + curPrice + " meat, we're gonna skip buying one in the mall.", "red");
+				auto_log_warning(it + " is too expensive at " + curPrice + " meat (worth up to " + priceLimit + "), we're gonna skip buying one in the mall.", "red");
 				break;
 			}
 			if((curPrice <= oldPrice) && (curPrice < priceLimit) && (meat >= curPrice))
