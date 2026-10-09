@@ -760,10 +760,10 @@ void auto_levelUpPull()
 	}
 	// For every slot, the best item in Hagnk's and how much it beats what's worn (the maximizer scores each suggestion
 	// as a gain over the current item, so an empty slot -- like the familiar slot all of runs 99 and 100 -- scores its
-	// item's full value). Pull and wear the biggest gains first, each worth at least auto_levelUpPullMinScore,
-	// up to auto_levelUpPullMax (3) a level, keeping the reserve.
+	// item's full value). Pull and wear the single biggest gain, if worth at least auto_levelUpPullMinScore: one a
+	// level (auto_levelUpPullMax), or the day's pulls would be gone by level 5. Keeps the reserve.
 	float minScore = get_property("auto_levelUpPullMinScore") == "" ? 5.0 : get_property("auto_levelUpPullMinScore").to_float();
-	int maxPulls = get_property("auto_levelUpPullMax") == "" ? 3 : get_property("auto_levelUpPullMax").to_int();
+	int maxPulls = get_property("auto_levelUpPullMax") == "" ? 1 : get_property("auto_levelUpPullMax").to_int();
 	float[slot] slotBest;
 	string[slot] slotCommand;
 	string[slot] slotWhat;
