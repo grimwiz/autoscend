@@ -1678,6 +1678,7 @@ item auto_autoConsumeOneSimulation(string type);
 boolean auto_knapsackAutoConsume(string type, boolean simulate);
 int auto_spleenFamiliarAdvItemsPossessed();
 boolean auto_chewAdventures();
+boolean auto_bedtimeChewing = false;	// at bedtime adventures roll over, so chew regardless of how many are left
 boolean auto_breakfastCounterVisit();
 item still_targetToOrigin(item target);
 boolean stillReachable();

@@ -2122,11 +2122,11 @@ int auto_spleenFamiliarAdvItemsPossessed()
 boolean auto_chewAdventures()
 {
 	//chews the spleen item with the best adventures per spleen, net of what it costs to pull or buy
-	boolean liver_check = my_inebriety() < inebriety_limit() && !in_kolhs();	//kolhs has special drinking. liver often unfilled
-	if(liver_check || my_fullness() < fullness_limit()
-		|| (my_adventures() > max(10,1+auto_advToReserve()) && !almostRollover()))
+	// whenever adventures are needed, like food and drink -- not only once they're full, by which time the day's pulls
+	// are gone (run 100 day 2 ended with 0 pulls and spleen 1/15). Spleen is its own organ, so it never crowds them out.
+	if(my_adventures() > max(10,1+auto_advToReserve()) && !almostRollover() && !auto_bedtimeChewing)
 	{
-		return false;	//chew late in the day, once food and drink are done: then each chew's adventures are played and it chews again
+		return false;
 	}
 	if(isActuallyEd())
 	{
@@ -2388,6 +2388,12 @@ void consumeStuff()
 		}
 	}
 
+	// spleen first: its own organ, so no food or drink is displaced, and pulls are still around early in the day
+	if (auto_chewAdventures())
+	{
+		return;
+	}
+
 	// If adventures at our reserve amount, or it's almost Rollover, we need to consume
 	if ((my_adventures() < max(10,1+auto_advToReserve()) && !edSpleenCheck) || (almostRollover() && needToConsumeForEmergencyRollover()))
 	{
@@ -2406,11 +2412,6 @@ void consumeStuff()
 		}
 	}
 	
-	//if stomach and liver are full and out of adv then chew size 4 iotm derivative spleen items that give 1.875 adv/size.
-	if (auto_chewAdventures())
-	{
-		return;
-	}
 }
 
 // In standard or with few IOTMs we might not be able to fill spleen with adventures or worksheds

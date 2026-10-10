@@ -74,6 +74,11 @@ boolean bedtime_spleen()
 	boolean[item] to_try = $items[Breathitin&trade;, Extrovermectin&trade;, hot jelly,
 	  scoop of pre-workout powder, Homebodyl&trade;, phosphor traces, energized spores];
 
+	// adventures roll over, so spend leftover pulls or held items on spleen adventures for tomorrow (up to the 200 cap)
+	auto_bedtimeChewing = true;
+	while (my_adventures() < 180 && auto_chewAdventures());
+	auto_bedtimeChewing = false;
+
 	boolean done = false;
 	while (spleen_left() > 0 && !done)
 	{
