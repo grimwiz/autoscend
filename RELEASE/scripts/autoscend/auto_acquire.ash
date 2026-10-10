@@ -788,6 +788,28 @@ void auto_levelUpPull()
 			slotWhat[sl] = entry.display;
 		}
 	}
+	// KoLmafia's maximizer doesn't offer familiar equipment from Hagnk's (checked: maximize("2familiar weight", 0, 0,
+	// 2, "") returns no familiar suggestion), which is why the familiar slot stayed empty. Score what's stored directly,
+	// with the default statement's weights, and let the best compete in the ranking.
+	if(equipped_item($slot[familiar]) == $item[none] && my_familiar() != $familiar[none] && !(slotBest contains $slot[familiar]))
+	{
+		foreach it, n in get_storage()
+		{
+			if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(my_familiar()) == it)
+				|| !auto_is_valid(it))
+			{
+				continue;
+			}
+			float score = 2 * numeric_modifier(it, "Familiar Weight") + 5 * numeric_modifier(it, "Item Drop")
+				+ numeric_modifier(it, "Meat Drop") + numeric_modifier(it, "Monster Level");
+			if(score > minScore && score > slotBest[$slot[familiar]])
+			{
+				slotBest[$slot[familiar]] = score;
+				slotCommand[$slot[familiar]] = "pull 1 " + it + "; equip familiar " + it;
+				slotWhat[$slot[familiar]] = it.to_string();
+			}
+		}
+	}
 	for(int n = 0; n < maxPulls && pulls_remaining() > reserve; n++)
 	{
 		slot pick = $slot[none];
