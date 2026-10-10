@@ -1580,6 +1580,7 @@ boolean auto_pullWetStew();
 boolean auto_craftInsteadOfPull(item it, int howMany);
 void auto_emptyStorageWhenFree();
 int auto_pullPriceCap(item it);
+float auto_pullCostAdventures(item it);
 boolean pulverizeThing(item it);
 boolean buyableMaintain(item toMaintain, int howMany);
 boolean buyableMaintain(item toMaintain, int howMany, int meatMin);

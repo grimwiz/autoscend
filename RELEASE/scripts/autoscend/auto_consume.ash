@@ -1374,12 +1374,11 @@ boolean loadConsumables(string _type, ConsumeAction[int] actions)
 			if (obtain_mode == AUTO_OBTAIN_PULL && !in_small())
 			{
 				// don't penalize pulls in small as want best options to utilize limited organs
-				// A pull is worth about 5 adventures while pulls are short, but today's unused pulls are lost at
-				// rollover (run 99 left 41 unused). While more than auto_consumePullReserve (5) remain for quest
-				// pulls, charge 2: a pulled item must add at least 2 adventures (~2,000 Meat of turns) over what's
-				// already held, so a pull isn't spent on a near-equal 100 Meat drink.
-				int pullReserve = get_property("auto_consumePullReserve") == "" ? 5 : get_property("auto_consumePullReserve").to_int();
-				actions[n].desirability -= (pulls_remaining() > pullReserve ? 2.0 : 5.0);
+				// One value for a turn everywhere (auto_turnValue, default 2,000 Meat): a pull costs auto_pullValue
+				// (1,000 Meat), plus the mall price if it has to be bought first, converted to adventures. The old
+				// flat 5-adventure charge once pulls were down to 5 made run 100 drink four wine coolers (4 adventures
+				// per liver point) instead of pulling mushroom wines (5) or better.
+				actions[n].desirability -= auto_pullCostAdventures(it);
 				float user_desirability = get_property("auto_consumePullDesirability").to_float();
 				if (user_desirability > 0.0)
 				{
@@ -2432,4 +2431,14 @@ int auto_getConsumablePriceLimit()
 		return mafia_max;
 	}
 	return min(autoscend_max,mafia_max);
+}
+
+// What pulling a consumable costs, in adventures at auto_turnValue: auto_pullValue for the pull, plus the mall price
+// when it has to be bought into Hagnk's first.
+float auto_pullCostAdventures(item it)
+{
+	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	float price = storage_amount(it) > 0 ? 0.0 : max(0, auto_mall_price(it));
+	return (pullValue + price) / max(1.0, turnValue);
 }

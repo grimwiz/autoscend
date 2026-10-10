@@ -222,8 +222,8 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
-// The most worth paying to buy a pull: the turns it saves times a turn's value (auto_turnValue, default 1,000 Meat,
-// about what aftercore meat farming earns per adventure), since every turn saved in a run becomes an aftercore turn.
+// The most worth paying to buy a pull: the turns it saves times a turn's value (auto_turnValue, default 2,000 Meat:
+// aftercore farming earns ~800-1,000, and a faster run is worth more), the same turn value the diet uses.
 // Turns saved are estimates from run logs; items without one keep autoBuyPriceLimit.
 int auto_pullPriceCap(item it)
 {
@@ -238,7 +238,7 @@ int auto_pullPriceCap(item it)
 	{
 		return limit;
 	}
-	int turnValue = get_property("auto_turnValue") == "" ? 1000 : get_property("auto_turnValue").to_int();
+	int turnValue = get_property("auto_turnValue") == "" ? 2000 : get_property("auto_turnValue").to_int();
 	return min(limit, to_int(turnsSaved[it] * turnValue));
 }
 
