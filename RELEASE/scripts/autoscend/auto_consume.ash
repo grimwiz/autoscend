@@ -2121,51 +2121,63 @@ int auto_spleenFamiliarAdvItemsPossessed()
 
 boolean auto_chewAdventures()
 {
-	//tries to chew a size 4 familiar spleen item that gives adventures. All are IOTM derivatives with 1.875 adv/size
+	//chews the spleen item with the best adventures per spleen, net of what it costs to pull or buy
 	boolean liver_check = my_inebriety() < inebriety_limit() && !in_kolhs();	//kolhs has special drinking. liver often unfilled
 	if(liver_check || my_fullness() < fullness_limit()
 		|| (my_adventures() > max(10,1+auto_advToReserve()) && !almostRollover()))
 	{
-		return false;	//1.875 A/S is bad. only chew if 1 adv remains
+		return false;	//chew late in the day, once food and drink are done: then each chew's adventures are played and it chews again
 	}
 	if(isActuallyEd())
 	{
 		return false;	//these consumables are very bad for ed, who has a path specific spleen consumable shop.
 	}
-	if(spleen_left() < 4)
-	{
-		return false;	//they are all size 4
-	}
-	
+	// Spleen is its own organ, so filling it costs no food or drink: only the item. Runs 97-100 each chewed one spleen
+	// item in the whole run, because only items already held were considered. Now each candidate is scored on average
+	// adventures less what getting it costs at auto_turnValue (nothing if held; else a pull, plus the mall price if it
+	// must be bought), and the best net adventures per spleen that fits is taken -- pulled or bought if need be.
 	item target = $item[none];
-	int target_value = 0;
-	
-	void chooseCheapestTarget(item it)
+	float target_value = 0;
+
+	float avgAdventures(item it)
 	{
-		if(item_amount(it) > 0 && auto_is_valid(it) &&
-		mall_price(it) < get_property("autoBuyPriceLimit").to_int())	//do not chew very expensive items even if already in inv
+		matcher m = create_matcher("(\\d+)(?:-(\\d+))?", it.adventures);
+		if(!m.find())
 		{
-			if(target == $item[none] || mall_price(it) < target_value)
-			{
-				target = it;
-				target_value = mall_price(it);
-			}
+			return 0;
+		}
+		float lo = m.group(1).to_float();
+		return m.group(2) == "" ? lo : (lo + m.group(2).to_float()) / 2;
+	}
+
+	void consider(item it)
+	{
+		if(!auto_is_valid(it) || it.spleen <= 0 || it.spleen > spleen_left() || my_level() < it.levelreq)
+		{
+			return;
+		}
+		boolean held = item_amount(it) > 0;
+		if(!held && (pulls_remaining() == 0 || !canPull(it) || (storage_amount(it) == 0 && mall_price(it) <= 0)))
+		{
+			return;
+		}
+		float net = avgAdventures(it) - (held ? 0.0 : auto_pullCostAdventures(it));
+		if(net > 0 && net / it.spleen > target_value)
+		{
+			target = it;
+			target_value = net / it.spleen;
 		}
 	}
-	
-	//first the ones without the level 4 requirement because they give more stats
-	foreach it in $items[Unconscious Collective Dream Jar, Grim Fairy Tale, Powdered Gold, Groose Grease]
+
+	foreach it in $items[voodoo snuff, Unconscious Collective Dream Jar, Grim Fairy Tale, Powdered Gold, Groose Grease, beastly paste, bug paste, cosmic paste, oily paste, demonic paste, gooey paste, elemental paste, Crimbo paste, fishy paste, goblin paste, hippy paste, hobo paste, indescribably horrible paste, greasy paste, Mer-kin paste, orc paste, penguin paste, pirate paste, chlorophyll paste, slimy paste, ectoplasmic paste, strange paste, Agua De Vida]
 	{
-		chooseCheapestTarget(it);
+		consider(it);
 	}
-	if(my_level() >= 4 && target == $item[none])
+	if(target != $item[none] && item_amount(target) == 0 && !pullXWhenHaveY(target, 1, 0))
 	{
-		foreach it in $items[beastly paste, bug paste, cosmic paste, oily paste, demonic paste, gooey paste, elemental paste, Crimbo paste, fishy paste, goblin paste, hippy paste, hobo paste, indescribably horrible paste, greasy paste, Mer-kin paste, orc paste, penguin paste, pirate paste, chlorophyll paste, slimy paste, ectoplasmic paste, strange paste, Agua De Vida]
-		{
-			chooseCheapestTarget(it);
-		}
+		return false;
 	}
-	
+
 	int oldSpleenUse = my_spleen_use();
 	if(target != $item[none])
 	{
