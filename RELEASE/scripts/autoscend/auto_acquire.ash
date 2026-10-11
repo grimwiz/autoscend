@@ -852,10 +852,14 @@ void auto_levelUpPull()
 	{
 		return;
 	}
-	// For every slot, the best item in Hagnk's and how much it beats what's worn (the maximizer scores each suggestion
-	// as a gain over the current item, so an empty slot -- like the familiar slot all of runs 99 and 100 -- scores its
-	// item's full value). Pull and wear the single biggest gain, if it pays for the pull (auto_pullMinScore): one a
-	// level (auto_levelUpPullMax), or the day's pulls would be gone by level 5. Keeps the reserve.
+	// The maximizer scores each suggestion as a gain over what is worn in that slot right now, so first wear the best
+	// owned gear in every slot. Otherwise a leftover from the last zone is the yardstick: run 100's level 11 check
+	// found a giant artisanal rice peeler (worn for spell damage) in the weapon slot and scored Pigsticker of Violence
+	// +146 against it, with the far better legendary seal-clubbing club in inventory.
+	maximize(statement, false);
+	// Then, for every slot, the best item in Hagnk's and how much it beats that. Pull and wear the single biggest gain,
+	// if it pays for the pull (auto_pullMinScore): one a level (auto_levelUpPullMax), or the day's pulls would be gone
+	// by level 5. Keeps the reserve.
 	float minScore = auto_pullMinScore();
 	int maxPulls = get_property("auto_levelUpPullMax") == "" ? 1 : get_property("auto_levelUpPullMax").to_int();
 	float[slot] slotBest;
