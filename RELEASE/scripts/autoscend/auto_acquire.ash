@@ -735,11 +735,105 @@ boolean auto_pearlForMeat()
 	return autosell(1, pearl);
 }
 
+// Fights left in the run, for valuing gear that pays a little every fight. A run is about auto_expectedRunTurns turns
+// (900: run 99 took 894), and about 93% of turns are fights (run 100 day 2: 197 fights in 211 turns).
+float auto_fightsLeft()
+{
+	int runTurns = get_property("auto_expectedRunTurns") == "" ? 900 : get_property("auto_expectedRunTurns").to_int();
+	return max(0, runTurns - my_turncount()) * 0.93;
+}
+
+// What one maximizer point is worth in Meat over the rest of the run. The default statement prices a point at +1% Meat
+// Drop, and a fight drops about auto_baseMeatPerFight Meat before bonuses (35: run 100 days 2-3, 230 fights).
+float auto_scorePointMeat()
+{
+	float baseMeat = get_property("auto_baseMeatPerFight") == "" ? 35.0 : get_property("auto_baseMeatPerFight").to_float();
+	return auto_fightsLeft() * baseMeat / 100.0;
+}
+
+// The gain a pulled piece of gear must show to pay for its pull (auto_pullValue, 1,000 Meat). Gear earns every fight
+// it's worn, so the bar is low early (3.4 points at turn 0) and climbs as the run ends (6.4 at turn 420, 31 at turn
+// 800). auto_levelUpPullMinScore fixes it instead.
+float auto_pullMinScore()
+{
+	if(get_property("auto_levelUpPullMinScore") != "")
+	{
+		return get_property("auto_levelUpPullMinScore").to_float();
+	}
+	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	float pointMeat = auto_scorePointMeat();
+	return pointMeat <= 0.0 ? 999999.0 : pullValue / pointMeat;
+}
+
+// An empty familiar slot loses a little every fight, so filling it doesn't wait for a level-up or compete with the
+// level's gear pull: once a day in Ronin, the best stored item the familiar can wear is pulled if what it adds over
+// the rest of the run beats a pull's value (auto_pullMinScore). KoLmafia's maximizer doesn't offer familiar equipment
+// from Hagnk's (checked: maximize("2familiar weight", 0, 0, 2, "") returns no familiar suggestion), which left the slot
+// empty all of runs 99 and 100, so each item is scored here with the default statement's weights, on what it does for
+// this familiar at this weight (a filthy child leash's +5 lb is +8% Item Drop on a 35 lb fairy). Meat the item
+// collects itself counts as well (ant tools: 12.5 Meat on 40% of the familiar's actions), but the familiar only acts
+// in rounds the monster survives: auto_familiarActionsPerFight, 0.3 (run 100 day 2: 85% of 197 fights ended on the
+// first hit). auto_familiarEquipPulls = false turns it off.
+void auto_familiarEquipPull()
+{
+	familiar fam = my_familiar();
+	if(get_property("auto_familiarEquipPulls") == "false" || in_hardcore() || can_interact()
+		|| fam == $familiar[none] || equipped_item($slot[familiar]) != $item[none])
+	{
+		return;
+	}
+	string key = my_ascensions() + ":" + my_daycount();
+	if(get_property("auto_familiarEquipPullDone") == key)
+	{
+		return;
+	}
+	set_property("auto_familiarEquipPullDone", key);
+	int reserve = get_property("auto_levelUpPullReserve") == "" ? 5 : get_property("auto_levelUpPullReserve").to_int();
+	if(pulls_remaining() <= reserve)
+	{
+		return;
+	}
+	float baseMeat = get_property("auto_baseMeatPerFight") == "" ? 35.0 : get_property("auto_baseMeatPerFight").to_float();
+	float actions = get_property("auto_familiarActionsPerFight") == "" ? 0.3 : get_property("auto_familiarActionsPerFight").to_float();
+	int weight = familiar_weight(fam) + weight_adjustment();
+	float[string] modWeight;
+	modWeight["Item Drop"] = 5.0;
+	modWeight["Meat Drop"] = 1.0;
+	modWeight["Monster Level"] = 1.0;
+	item best = $item[none];
+	float bestScore = auto_pullMinScore();
+	foreach it, n in get_storage()
+	{
+		if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(fam) == it) || !auto_is_valid(it))
+		{
+			continue;
+		}
+		float score = 2 * numeric_modifier(it, "Familiar Weight");
+		foreach mod, w in modWeight
+		{
+			score += w * (numeric_modifier(fam, mod, weight, it) - numeric_modifier(fam, mod, weight, $item[none]));
+		}
+		score += numeric_modifier(it, "Meat Bonus") * numeric_modifier(it, "Sporadic Damage Aura") * actions * 100.0 / baseMeat;
+		if(score > bestScore)
+		{
+			best = it;
+			bestScore = score;
+		}
+	}
+	if(best == $item[none])
+	{
+		return;
+	}
+	auto_log_info("Familiar slot is empty: pulling " + best + " from Hagnk's (score +" + bestScore + ", worth about "
+		+ (bestScore * auto_scorePointMeat()).to_int() + " Meat over the rest of the run).", "blue");
+	cli_execute("pull 1 " + best + "; equip familiar " + best);
+}
+
 // Once per level in Ronin: ask the maximizer, with Hagnk's included, whether pulling one piece of equipment would
 // improve the gear autoscend is currently after, and pull and wear the best one. Items pulled at level 1 are often
 // outgrown by level 7, so this keeps the gear current as the run goes. Keeps auto_levelUpPullReserve pulls (5) for
-// planned pulls, needs a score gain of at least auto_levelUpPullMinScore (5), never buys (no "buy & pull").
-// auto_levelUpPulls = false turns it off.
+// planned pulls, needs a score gain that pays for the pull (auto_pullMinScore), never buys (no "buy & pull").
+// The familiar slot is auto_familiarEquipPull's. auto_levelUpPulls = false turns it off.
 void auto_levelUpPull()
 {
 	if(get_property("auto_levelUpPulls") == "false" || in_hardcore() || can_interact())
@@ -760,9 +854,9 @@ void auto_levelUpPull()
 	}
 	// For every slot, the best item in Hagnk's and how much it beats what's worn (the maximizer scores each suggestion
 	// as a gain over the current item, so an empty slot -- like the familiar slot all of runs 99 and 100 -- scores its
-	// item's full value). Pull and wear the single biggest gain, if worth at least auto_levelUpPullMinScore: one a
+	// item's full value). Pull and wear the single biggest gain, if it pays for the pull (auto_pullMinScore): one a
 	// level (auto_levelUpPullMax), or the day's pulls would be gone by level 5. Keeps the reserve.
-	float minScore = get_property("auto_levelUpPullMinScore") == "" ? 5.0 : get_property("auto_levelUpPullMinScore").to_float();
+	float minScore = auto_pullMinScore();
 	int maxPulls = get_property("auto_levelUpPullMax") == "" ? 1 : get_property("auto_levelUpPullMax").to_int();
 	float[slot] slotBest;
 	string[slot] slotCommand;
@@ -786,28 +880,6 @@ void auto_levelUpPull()
 			slotBest[sl] = entry.score;
 			slotCommand[sl] = entry.command;
 			slotWhat[sl] = entry.display;
-		}
-	}
-	// KoLmafia's maximizer doesn't offer familiar equipment from Hagnk's (checked: maximize("2familiar weight", 0, 0,
-	// 2, "") returns no familiar suggestion), which is why the familiar slot stayed empty. Score what's stored directly,
-	// with the default statement's weights, and let the best compete in the ranking.
-	if(equipped_item($slot[familiar]) == $item[none] && my_familiar() != $familiar[none] && !(slotBest contains $slot[familiar]))
-	{
-		foreach it, n in get_storage()
-		{
-			if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(my_familiar()) == it)
-				|| !auto_is_valid(it))
-			{
-				continue;
-			}
-			float score = 2 * numeric_modifier(it, "Familiar Weight") + 5 * numeric_modifier(it, "Item Drop")
-				+ numeric_modifier(it, "Meat Drop") + numeric_modifier(it, "Monster Level");
-			if(score > minScore && score > slotBest[$slot[familiar]])
-			{
-				slotBest[$slot[familiar]] = score;
-				slotCommand[$slot[familiar]] = "pull 1 " + it + "; equip familiar " + it;
-				slotWhat[$slot[familiar]] = it.to_string();
-			}
 		}
 	}
 	for(int n = 0; n < maxPulls && pulls_remaining() > reserve; n++)
