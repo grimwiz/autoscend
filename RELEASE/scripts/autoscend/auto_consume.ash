@@ -2119,6 +2119,37 @@ int auto_spleenFamiliarAdvItemsPossessed()
 	return spleenFamiliarAdvItemsCount;
 }
 
+// Average adventures from an item's "5-10" style range.
+float auto_avgAdventures(item it)
+{
+	matcher m = create_matcher("(\\d+)(?:-(\\d+))?", it.adventures);
+	if(!m.find())
+	{
+		return 0;
+	}
+	float lo = m.group(1).to_float();
+	return m.group(2) == "" ? lo : (lo + m.group(2).to_float()) / 2;
+}
+
+// Every spleen item that gives adventures, from KoLmafia's data. A fixed list of the usual ones (dream jars, grim
+// fairy tales, powdered gold, the pastes...) was all drops from old Mr. Store familiars, which the Standard path bans,
+// so runs 97-100 never found anything to chew. Never Instant Karma: it is kept to discard for Karma.
+boolean[item] auto_spleenAdventureItems()
+{
+	static boolean[item] found;
+	if(count(found) == 0)
+	{
+		foreach it in $items[]
+		{
+			if(it.spleen > 0 && it != $item[Instant Karma] && auto_avgAdventures(it) > 0)
+			{
+				found[it] = true;
+			}
+		}
+	}
+	return found;
+}
+
 boolean auto_chewAdventures()
 {
 	//chews the spleen item with the best adventures per spleen, net of what it costs to pull or buy
@@ -2132,36 +2163,48 @@ boolean auto_chewAdventures()
 	{
 		return false;	//these consumables are very bad for ed, who has a path specific spleen consumable shop.
 	}
-	// Spleen is its own organ, so filling it costs no food or drink: only the item. Runs 97-100 each chewed one spleen
-	// item in the whole run, because only items already held were considered. Now each candidate is scored on average
-	// adventures less what getting it costs at auto_turnValue (nothing if held; else a pull, plus the mall price if it
-	// must be bought), and the best net adventures per spleen that fits is taken -- pulled or bought if need be.
+	if(spleen_left() == 0)
+	{
+		return false;
+	}
+	// Spleen is its own organ, so filling it costs no food or drink: only the item. Each candidate the path allows is
+	// scored on average adventures less what getting it costs at auto_turnValue (nothing if held; else a pull, plus
+	// the mall price if it must be bought), and the best net adventures per spleen that fits is taken -- pulled or
+	// bought if need be. While pulls are short for food and drink a pull costs more (auto_pullCostAdventures), so
+	// then only held items are chewed and the rest waits for the pulls left over at bedtime.
 	item target = $item[none];
 	float target_value = 0;
-
-	float avgAdventures(item it)
-	{
-		matcher m = create_matcher("(\\d+)(?:-(\\d+))?", it.adventures);
-		if(!m.find())
-		{
-			return 0;
-		}
-		float lo = m.group(1).to_float();
-		return m.group(2) == "" ? lo : (lo + m.group(2).to_float()) / 2;
-	}
+	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
 
 	void consider(item it)
 	{
-		if(!auto_is_valid(it) || it.spleen <= 0 || it.spleen > spleen_left() || my_level() < it.levelreq)
+		if(!auto_is_valid(it) || it.spleen > spleen_left() || my_level() < it.levelreq || !canChew(it))
 		{
 			return;
 		}
-		boolean held = item_amount(it) > 0;
-		if(!held && (pulls_remaining() == 0 || !canPull(it) || (storage_amount(it) == 0 && mall_price(it) <= 0)))
+		float cost = 0.0;
+		if(item_amount(it) == 0)
 		{
-			return;
+			if(pulls_remaining() == 0)
+			{
+				return;
+			}
+			if(storage_amount(it) == 0)
+			{
+				// rule out the hopeless on the remembered price: a mall search for every candidate takes minutes
+				int known = historical_price(it);
+				if(!is_tradeable(it) || (known > 0 && (auto_avgAdventures(it) - known / max(1.0, turnValue)) / it.spleen <= target_value))
+				{
+					return;
+				}
+			}
+			if(!canPull(it))
+			{
+				return;
+			}
+			cost = auto_pullCostAdventures(it);
 		}
-		float net = avgAdventures(it) - (held ? 0.0 : auto_pullCostAdventures(it));
+		float net = auto_avgAdventures(it) - cost;
 		if(net > 0 && net / it.spleen > target_value)
 		{
 			target = it;
@@ -2169,22 +2212,24 @@ boolean auto_chewAdventures()
 		}
 	}
 
-	foreach it in $items[voodoo snuff, Unconscious Collective Dream Jar, Grim Fairy Tale, Powdered Gold, Groose Grease, beastly paste, bug paste, cosmic paste, oily paste, demonic paste, gooey paste, elemental paste, Crimbo paste, fishy paste, goblin paste, hippy paste, hobo paste, indescribably horrible paste, greasy paste, Mer-kin paste, orc paste, penguin paste, pirate paste, chlorophyll paste, slimy paste, ectoplasmic paste, strange paste, Agua De Vida]
+	foreach it in auto_spleenAdventureItems()
 	{
 		consider(it);
 	}
-	if(target != $item[none] && item_amount(target) == 0 && !pullXWhenHaveY(target, 1, 0))
+	if(target == $item[none])
+	{
+		auto_log_debug("No spleen item is worth chewing for adventures (spleen " + my_spleen_use() + "/" + spleen_limit() + ", " + pulls_remaining() + " pulls left).");
+		return false;
+	}
+	if(item_amount(target) == 0 && !pullXWhenHaveY(target, 1, 0))
 	{
 		return false;
 	}
 
 	int oldSpleenUse = my_spleen_use();
-	if(target != $item[none])
+	if(!autoChew(1, target))	//the actual chewing attempt
 	{
-		if(!autoChew(1, target))	//the actual chewing attempt
-		{
-			auto_log_warning("Mysteriously failed to chew [" +target+ "]", "red");
-		}
+		auto_log_warning("Mysteriously failed to chew [" +target+ "]", "red");
 	}
 	return oldSpleenUse != my_spleen_use();
 }
@@ -2446,12 +2491,24 @@ int auto_getConsumablePriceLimit()
 	return min(autoscend_max,mafia_max);
 }
 
-// What pulling a consumable costs, in adventures at auto_turnValue: auto_pullValue for the pull, plus the mall price
-// when it has to be bought into Hagnk's first.
+// What pulling a consumable costs, in adventures at auto_turnValue: auto_pullValue (1,000 Meat) for the pull, plus
+// the mall price when it has to be bought into Hagnk's first. When the stomach and liver left outnumber the pulls
+// left, a pull is scarcer than that: it should fill space / pulls points (capped at 5), and each point it leaves
+// for unpulled food costs about auto_pullAdvPremium adventures (2: pulled food and drink give 4.5-5 a point, the
+// tavern and cafe 2.5-3.5). Run 100 day 3 had 17 pulls for 34 points, spent ten on 1-point items worth 4-5
+// adventures each, and ran out with 4 stomach, 1 liver and the nightcap to go (Knob nuts: 3 adventures).
 float auto_pullCostAdventures(item it)
 {
 	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
 	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	float premium = get_property("auto_pullAdvPremium") == "" ? 2.0 : get_property("auto_pullAdvPremium").to_float();
 	float price = storage_amount(it) > 0 ? 0.0 : max(0, auto_mall_price(it));
-	return (pullValue + price) / max(1.0, turnValue);
+	float scarcity = 0.0;
+	int space = fullness_left() + inebriety_left();
+	if(pulls_remaining() > 0 && space > 0)
+	{
+		float shouldFill = min(5.0, space.to_float() / pulls_remaining());
+		scarcity = premium * max(0.0, shouldFill - it.fullness - it.inebriety);
+	}
+	return (pullValue + price) / max(1.0, turnValue) + scarcity;
 }
