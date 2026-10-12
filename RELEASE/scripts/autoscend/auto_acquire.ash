@@ -776,9 +776,7 @@ float auto_pullMinScore()
 // first hit). auto_familiarEquipPulls = false turns it off.
 void auto_familiarEquipPull()
 {
-	familiar fam = my_familiar();
-	if(get_property("auto_familiarEquipPulls") == "false" || in_hardcore() || can_interact()
-		|| fam == $familiar[none] || equipped_item($slot[familiar]) != $item[none])
+	if(get_property("auto_familiarEquipPulls") == "false" || in_hardcore() || can_interact())
 	{
 		return;
 	}
@@ -787,10 +785,24 @@ void auto_familiarEquipPull()
 	{
 		return;
 	}
+	familiar fam = my_familiar();
+	item worn = equipped_item($slot[familiar]);
+	if(fam == $familiar[none] || worn != $item[none])
+	{
+		// not today's check yet: it waits for a familiar with nothing on. Say so once per start (run 100 day 4: the
+		// check never ran though the log showed a Skeleton of Crimbo Past wearing nothing all day).
+		if(!auto_familiarEquipPullExplained)
+		{
+			auto_familiarEquipPullExplained = true;
+			auto_log_info("Familiar item pull is waiting: familiar [" + fam + "] is wearing [" + worn + "].", "blue");
+		}
+		return;
+	}
 	set_property("auto_familiarEquipPullDone", key);
 	int reserve = get_property("auto_levelUpPullReserve") == "" ? 5 : get_property("auto_levelUpPullReserve").to_int();
 	if(pulls_remaining() <= reserve)
 	{
+		auto_log_info("Familiar slot is empty, but only " + pulls_remaining() + " pulls are left: keeping them.", "blue");
 		return;
 	}
 	float baseMeat = get_property("auto_baseMeatPerFight") == "" ? 35.0 : get_property("auto_baseMeatPerFight").to_float();
@@ -802,6 +814,8 @@ void auto_familiarEquipPull()
 	modWeight["Monster Level"] = 1.0;
 	item best = $item[none];
 	float bestScore = auto_pullMinScore();
+	item runnerUp = $item[none];
+	float runnerUpScore = 0.0;
 	foreach it, n in get_storage()
 	{
 		if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(fam) == it) || !auto_is_valid(it))
@@ -819,9 +833,16 @@ void auto_familiarEquipPull()
 			best = it;
 			bestScore = score;
 		}
+		if(score > runnerUpScore)
+		{
+			runnerUp = it;
+			runnerUpScore = score;
+		}
 	}
 	if(best == $item[none])
 	{
+		auto_log_info("Familiar slot is empty: nothing in Hagnk's is worth a pull for " + fam + " (best is " + runnerUp + " at +"
+			+ runnerUpScore + ", a pull needs +" + auto_pullMinScore() + ").", "blue");
 		return;
 	}
 	auto_log_info("Familiar slot is empty: pulling " + best + " from Hagnk's (score +" + bestScore + ", worth about "
