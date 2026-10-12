@@ -242,17 +242,25 @@ int auto_pullPriceCap(item it)
 	return min(limit, to_int(turnsSaved[it] * turnValue));
 }
 
-// When Ronin ends mid-run (turn 1000 before the King is freed), everything in Hagnk's is free to use: quest items,
-// gear, food and drink. Empty it once per ascension (the Casual path already does).
+// When Ronin ends, everything in Hagnk's is free to use: quest items, gear, food, drink and Meat. That is at turn 1000
+// or, far more often, when the King is freed. Empty the items once per ascension (the Casual path already does) and
+// take the Meat too: with mall access it is the Meat on hand that gets spent.
 void auto_emptyStorageWhenFree()
 {
-	if(!can_interact() || in_hardcore() || get_property("kingLiberated").to_boolean()
-		|| get_property("lastEmptiedStorage").to_int() == my_ascensions())
+	if(!can_interact())
 	{
 		return;
 	}
-	auto_log_info("Out of Ronin: emptying Hagnk's so stored quest items, gear, food and drink can be used.", "blue");
-	cli_execute("pull all");
+	if(get_property("lastEmptiedStorage").to_int() != my_ascensions())
+	{
+		auto_log_info("Out of Ronin: emptying Hagnk's so stored quest items, gear, food and drink can be used.", "blue");
+		cli_execute("pull all");
+	}
+	if(my_storage_meat() > 0)
+	{
+		auto_log_info("Out of Ronin: taking " + my_storage_meat() + " Meat out of Hagnk's.", "blue");
+		cli_execute("pull " + my_storage_meat() + " meat");
+	}
 }
 
 // Make an item from ingredients in inventory or Hagnk's instead of pulling or buying it, when its mall price is more

@@ -1874,6 +1874,7 @@ boolean doTasks()
 	}
 	if(inAftercore())
 	{
+		auto_emptyStorageWhenFree();	// the King being freed is what usually ends Ronin
 		auto_log_warning("I am in aftercore", "red");
 		return false;
 	}
