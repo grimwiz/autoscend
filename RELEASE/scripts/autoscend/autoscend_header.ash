@@ -1683,6 +1683,7 @@ boolean auto_knapsackAutoConsume(string type, boolean simulate);
 int auto_spleenFamiliarAdvItemsPossessed();
 boolean auto_chewAdventures();
 boolean auto_bedtimeChewing = false;	// at bedtime adventures roll over, so chew regardless of how many are left
+boolean[item] auto_chewFailed;	// spleen items that would not chew this start: auto_chewAdventures skips them
 boolean auto_familiarEquipPullExplained = false;	// auto_familiarEquipPull has said, this start, why it is waiting
 boolean auto_breakfastCounterVisit();
 item still_targetToOrigin(item target);

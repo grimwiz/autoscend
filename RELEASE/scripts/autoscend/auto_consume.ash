@@ -784,6 +784,13 @@ boolean canChew(item toChew)
 		return false;
 	}
 
+	// as for food and drink: nothing with a level 13 requirement can be used in Ronin. Run 100 day 4 pulled a voodoo
+	// snuff at level 13 and KoLmafia refused to chew it, every turn for the rest of the day.
+	if(toChew.levelreq >= 13 && !can_interact())
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -2178,7 +2185,7 @@ boolean auto_chewAdventures()
 
 	void consider(item it)
 	{
-		if(!auto_is_valid(it) || it.spleen > spleen_left() || my_level() < it.levelreq || !canChew(it))
+		if(!auto_is_valid(it) || it.spleen > spleen_left() || my_level() < it.levelreq || !canChew(it) || auto_chewFailed[it])
 		{
 			return;
 		}
@@ -2229,7 +2236,8 @@ boolean auto_chewAdventures()
 	int oldSpleenUse = my_spleen_use();
 	if(!autoChew(1, target))	//the actual chewing attempt
 	{
-		auto_log_warning("Mysteriously failed to chew [" +target+ "]", "red");
+		auto_log_warning("Mysteriously failed to chew [" +target+ "]: leaving it alone until autoscend is restarted", "red");
+		auto_chewFailed[target] = true;	// or it is picked again every turn and nothing else is ever tried
 	}
 	return oldSpleenUse != my_spleen_use();
 }
