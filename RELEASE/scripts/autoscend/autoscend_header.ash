@@ -1579,6 +1579,7 @@ boolean pullXWhenHaveY(item it, int howMany, int whenHave);
 boolean auto_pullWetStew();
 boolean auto_craftInsteadOfPull(item it, int howMany);
 void auto_emptyStorageWhenFree();
+void auto_offerLoathingItems();
 int auto_pullPriceCap(item it);
 float auto_pullCostAdventures(item it);
 boolean pulverizeThing(item it);

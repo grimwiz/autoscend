@@ -261,6 +261,58 @@ void auto_emptyStorageWhenFree()
 		auto_log_info("Out of Ronin: taking " + my_storage_meat() + " Meat out of Hagnk's.", "blue");
 		cli_execute("pull " + my_storage_meat() + " meat");
 	}
+	auto_offerLoathingItems();
+}
+
+// The Clothing of Loathing is smithed from one Hatred piece (Yog-Urt) and one Violence piece (Shub-Jigguwatt), each
+// dropped for one class only, so the halves pile up in Hagnk's over many ascensions. Once Hagnk's is emptied, ask
+// (once per ascension) whether to make each Loathing item that isn't owned yet and whose two halves are both in hand.
+void auto_offerLoathingItems()
+{
+	if(get_property("auto_loathingOffered").to_int() == my_ascensions())
+	{
+		return;
+	}
+	set_property("auto_loathingOffered", my_ascensions());
+	//written out because get_ingredients() is empty while KoLmafia thinks you can't smith
+	item[item] hatred = {
+		$item[Belt of Loathing] : $item[Girdle of Hatred],
+		$item[Goggles of Loathing] : $item[Lens of Hatred],
+		$item[Jeans of Loathing] : $item[Pantaloons of Hatred],
+		$item[Scepter of Loathing] : $item[Cold Stone of Hatred],
+		$item[Stick-Knife of Loathing] : $item[Staff of Simmering Hatred],
+		$item[Treads of Loathing] : $item[Fuzzy Slippers of Hatred]
+	};
+	item[item] violence = {
+		$item[Belt of Loathing] : $item[Novelty Belt Buckle of Violence],
+		$item[Goggles of Loathing] : $item[Lens of Violence],
+		$item[Jeans of Loathing] : $item[Jodhpurs of Violence],
+		$item[Scepter of Loathing] : $item[Brand of Violence],
+		$item[Stick-Knife of Loathing] : $item[Pigsticker of Violence],
+		$item[Treads of Loathing] : $item[Ass-Stompers of Violence]
+	};
+	foreach it, hate in hatred
+	{
+		if(available_amount(it) + storage_amount(it) + display_amount(it) > 0
+			|| item_amount(hate) == 0 || item_amount(violence[it]) == 0)
+		{
+			continue;
+		}
+		string halves = hate + " + " + violence[it];
+		if(available_amount($item[tenderizing hammer]) == 0)
+		{
+			auto_log_info("You can make " + it + " from " + halves + ", but smithing it needs a tenderizing hammer.", "blue");
+			continue;
+		}
+		if(user_confirm("You have " + halves + ". Make " + it + " from them (this uses both up)? Will default to 'No' in 60 seconds.", 60000, false))
+		{
+			create(1, it);
+		}
+		else
+		{
+			auto_log_info("Not making " + it + ". To make it later: create 1 " + it, "blue");
+		}
+	}
 }
 
 // Make an item from ingredients in inventory or Hagnk's instead of pulling or buying it, when its mall price is more
