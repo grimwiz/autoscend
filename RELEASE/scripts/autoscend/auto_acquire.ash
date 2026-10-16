@@ -1216,6 +1216,28 @@ void auto_levelUpPull()
 	// by level 5. Keeps the reserve.
 	float minScore = auto_pullMinScore();
 	int maxPulls = get_property("auto_levelUpPullMax") == "" ? 1 : get_property("auto_levelUpPullMax").to_int();
+	// With dynamic ML, gear pays back mostly as the extra ML it makes safe (stats every fight). When survival is what
+	// holds ML down, max HP and damage reduction also count for the ML they would unlock, at the statement's weight
+	// for ML (1 if it has none), in both the maximizer's suggestions and the made-from-Hagnk's scores.
+	float[string] unlock = auto_mlUnlockPerPoint(my_location());
+	if(count(unlock) > 0)
+	{
+		float mlWeight = 1.0;
+		matcher mlTerm = create_matcher("(?:^|,)\\s*(-?[0-9.]*)\\s*ml(?:\\s|,|$)", statement.to_lower_case());
+		if(mlTerm.find() && mlTerm.group(1) != "" && mlTerm.group(1) != "-")
+		{
+			mlWeight = mlTerm.group(1).to_float();
+		}
+		if(mlWeight > 0)
+		{
+			foreach keyword, per in unlock
+			{
+				statement = auto_addStatementWeight(statement, keyword, per * mlWeight);
+			}
+			auto_log_info("Level " + my_level() + ": ML in " + my_location() + " is held at " + get_property("auto_MLSafetyLimit")
+				+ " by max HP, so max HP and damage reduction also count for the ML they would unlock.", "blue");
+		}
+	}
 	float[slot] slotBest;
 	string[slot] slotCommand;
 	string[slot] slotWhat;

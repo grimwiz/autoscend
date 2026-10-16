@@ -6213,25 +6213,81 @@ boolean auto_meetsMinimumRequirements()
 // they can (fewer powerlevelling turns). ML adds 1:1 to monster attack, defense and HP. For each monster:
 //  - survive: five of its hits (each about 1.25 damage more per point of ML) fit in 75% of max HP
 //  - hit it: for melee classes, buffed hit stat at least 20 over its defense (autoscend's own threshold)
-// Capped by auto_MLDynamicMax (default 150).
-int auto_safeML(location place)
+// Capped by auto_MLDynamicMax (default 150). limits gets each part: "survival", "hit" and "cap".
+int auto_safeML(location place, int[string] limits)
 {
 	int cap = get_property("auto_MLDynamicMax") == "" ? 150 : get_property("auto_MLDynamicMax").to_int();
 	int ml = monster_level_adjustment();
 	boolean melee = !($classes[Sauceror, Pastamancer] contains my_class());
-	int safe = cap;
+	limits["cap"] = cap;
+	limits["survival"] = cap;
+	limits["hit"] = cap;
 	foreach m, rate in appearance_rates(place)
 	{
 		if(m == $monster[none] || rate <= 0)
 		{
 			continue;
 		}
-		int bySurvival = ml + to_int((0.15 * my_maxhp() - expected_damage(m)) / 1.25);
-		safe = min(safe, bySurvival);
+		limits["survival"] = min(limits["survival"], ml + to_int((0.15 * my_maxhp() - expected_damage(m)) / 1.25));
 		if(melee)
 		{
-			safe = min(safe, ml + buffed_hit_stat() - 20 - monster_defense(m));
+			limits["hit"] = min(limits["hit"], ml + buffed_hit_stat() - 20 - monster_defense(m));
 		}
 	}
-	return max(0, safe);
+	return max(0, min(cap, min(limits["survival"], limits["hit"])));
+}
+
+int auto_safeML(location place)
+{
+	int[string] limits;
+	return auto_safeML(place, limits);
+}
+
+// What a point of max HP and of damage reduction is worth in ML, while the ML worn is pressing against a limit set by
+// survival (run 101, an Accordion Thief: 243 max HP at level 9 held ML at 61, against 82 for run 100's Turtle Tamer
+// with 406). auto_safeML allows (15% of max HP - a hit) / 1.25 of ML, so a point of max HP lifts it by 0.12 and a
+// point of damage reduction (one less damage a hit) by 0.8. Both are 0 when survival isn't what holds ML down.
+float[string] auto_mlUnlockPerPoint(location place)
+{
+	float[string] per;
+	int[string] limits;
+	int safe = auto_safeML(place, limits);
+	if(get_property("auto_MLDynamic") == "false" || limits["survival"] > limits["hit"] || limits["survival"] >= limits["cap"]
+		|| monster_level_adjustment() < safe - 2)
+	{
+		return per;
+	}
+	per["hp"] = 0.15 / 1.25;
+	per["dr"] = 1.0 / 1.25;
+	return per;
+}
+
+// The statement with the weight of one of its terms raised by extra (KoLmafia's maximizer takes the last of repeated
+// terms, so a second "hp" would replace the first rather than add to it). Appended if the statement has no such term.
+string auto_addStatementWeight(string statement, string keyword, float extra)
+{
+	string[int] terms = split_string(statement, ",");
+	string result = "";
+	boolean found = false;
+	foreach i, raw in terms
+	{
+		string term = raw.trim();
+		// "0.4hp", "dr", "hp 500max" - but not "hp regen"
+		matcher m = create_matcher("^(-?[0-9.]*)\\s*" + keyword + "(\\s+-?[0-9.]+\\s*m(?:ax|in).*)?$", term.to_lower_case());
+		if(!found && m.find())
+		{
+			float w = m.group(1) == "" ? 1.0 : (m.group(1) == "-" ? -1.0 : m.group(1).to_float());
+			term = to_string(w + extra, "%.2f") + keyword + m.group(2);
+			found = true;
+		}
+		if(term != "")
+		{
+			result += (result == "" ? "" : ",") + term;
+		}
+	}
+	if(!found)
+	{
+		result += (result == "" ? "" : ",") + to_string(extra, "%.2f") + keyword;
+	}
+	return result;
 }
