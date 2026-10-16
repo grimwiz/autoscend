@@ -987,6 +987,23 @@ void auto_levelUpPull()
 	}
 }
 
+// Day 2 prep. Day 1 is short of Meat and pulls; by day 2 there is some leeway, so set up the tools that let autoscend
+// make things rather than pull them: a tenderizing hammer for smithing (the Nemesis quest needs one later anyway, and
+// Hagnk's usually has one, so it is pulled, never bought here), an oven for cooking and a cocktailcrafting kit for
+// mixing (General Store, about 1,000 Meat each). With them, smithed gear, cooked food and mixed drinks count among
+// what can be made.
+void auto_day2Prep()
+{
+	item hammer = $item[tenderizing hammer];
+	if(available_amount(hammer) == 0 && storage_amount(hammer) > 0 && canPull(hammer))
+	{
+		auto_log_info("Day 2 prep: pulling a tenderizing hammer so gear can be smithed.", "blue");
+		pullXWhenHaveY(hammer, 1, 0);
+	}
+	ovenHandle();
+	cocktailKitHandle();
+}
+
 int handlePulls(int day)
 {
 	if(item_amount($item[Astral Six-Pack]) > 0)
@@ -1251,7 +1268,7 @@ int handlePulls(int day)
 		// pulls for Avant Guard path
 		ag_pulls();
 		zoo_d2Pulls();
-		
+		auto_day2Prep();
 	}
 
 	// do this regardless of day if we still need to complete the bridge -- but only once the Orc Chasm is the quest

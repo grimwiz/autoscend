@@ -1083,6 +1083,7 @@ void initializeDay(int day)
 	if(day >= 2)
 	{
 		ovenHandle();
+		cocktailKitHandle();
 	}
 
 	string campground = visit_url("campground.php");

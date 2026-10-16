@@ -1935,6 +1935,20 @@ boolean ovenHandle()
 	return get_property("auto_haveoven").to_boolean();
 }
 
+// A cocktailcrafting kit makes mixed drinks possible (KoLmafia's hasCocktailKit). Bought like the oven: General Store,
+// only with 1,000 Meat to spare.
+boolean cocktailKitHandle()
+{
+	item kit = $item[Queue Du Coq cocktailcrafting kit];
+	if(!get_property("hasCocktailKit").to_boolean() && auto_is_valid(kit) && (my_meat() >= (npc_price(kit) + 1000)) && isGeneralStoreAvailable())
+	{
+		auto_log_info("Buying a cocktailcrafting kit so drinks can be mixed.", "blue");
+		auto_buyUpTo(1, kit);
+		use(1, kit);
+	}
+	return get_property("hasCocktailKit").to_boolean();
+}
+
 boolean isGhost(monster mon)
 {
 	boolean[monster] ghosts = $monsters[Ancient Ghost, Angry Ghost, Banshee Librarian, Battlie Knight Ghost, Bettie Barulio, Chalkdust Wraith, Claybender Sorcerer Ghost, Coaltergeist, Cold Ghost, Contemplative Ghost, Dusken Raider Ghost, Ghost, Ghost Actor, Ghost Miner, Ghost of Elizabeth Spookyraven, Hot Ghost, Hustled Spectre, Lovesick Ghost, Marcus Macurgeon, Marvin J. Sunny, Mayor Ghost, Mer-kin Specter, Model Skeleton, Mortimer Strauss, Plaid Ghost, Protector Spectre, Restless Ghost, Sexy Sorority Ghost, Sheet Ghost, Sleaze Ghost, Space Tourist Explorer Ghost, Spooky Ghost, Stench Ghost, The Ghost of Phil Bunion, The Unknown Accordion Thief, The Unknown Disco Bandit, The Unknown Pastamancer, The Unknown Sauceror, The Unknown Seal Clubber, The Unknown Turtle Tamer, Whatsian Commando Ghost, Wonderful Winifred Wongle];
