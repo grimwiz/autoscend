@@ -894,15 +894,16 @@ float auto_pullMinScore()
 	return pointMeat <= 0.0 ? 999999.0 : pullValue / pointMeat;
 }
 
-// An empty familiar slot loses a little every fight, so filling it doesn't wait for a level-up or compete with the
-// level's gear pull: once a day in Ronin, the best stored item the familiar can wear is pulled if what it adds over
-// the rest of the run beats a pull's value (auto_pullMinScore). KoLmafia's maximizer doesn't offer familiar equipment
-// from Hagnk's (checked: maximize("2familiar weight", 0, 0, 2, "") returns no familiar suggestion), which left the slot
-// empty all of runs 99 and 100, so each item is scored here with the default statement's weights, on what it does for
-// this familiar at this weight (a filthy child leash's +5 lb is +8% Item Drop on a 35 lb fairy). Meat the item
-// collects itself counts as well (ant tools: 12.5 Meat on 40% of the familiar's actions), but the familiar only acts
-// in rounds the monster survives: auto_familiarActionsPerFight, 0.3 (run 100 day 2: 85% of 197 fights ended on the
-// first hit). auto_familiarEquipPulls = false turns it off.
+// The familiar's equipment slot: once a day in Ronin, the best stored item the familiar can wear is pulled if what it
+// adds over what the familiar is wearing now, over the rest of the run, beats a pull's value (auto_pullMinScore). It
+// doesn't wait for a level-up or compete with the level's gear pull. KoLmafia's maximizer doesn't offer familiar
+// equipment from Hagnk's (checked: maximize("2familiar weight", 0, 0, 2, "") returns no familiar suggestion), which
+// left the slot empty all of runs 99 and 100, so each item is scored here with the default statement's weights, on
+// what it does for this familiar at this weight (a filthy child leash's +5 lb is +8% Item Drop on a 35 lb fairy). Meat
+// the item collects itself counts as well (ant tools: 12.5 Meat on 40% of the familiar's actions), but the familiar
+// only acts in rounds the monster survives: auto_familiarActionsPerFight, 0.3 (run 100 day 2: 85% of 197 fights ended
+// on the first hit). Compared with what's worn, not only an empty slot: run 101 day 2 kept an anniversary tiny latex
+// mask (+1 lb) on all day while the check waited for an empty slot. auto_familiarEquipPulls = false turns it off.
 void auto_familiarEquipPull()
 {
 	if(get_property("auto_familiarEquipPulls") == "false" || in_hardcore() || can_interact())
@@ -916,14 +917,13 @@ void auto_familiarEquipPull()
 	}
 	familiar fam = my_familiar();
 	item worn = equipped_item($slot[familiar]);
-	if(fam == $familiar[none] || worn != $item[none])
+	if(fam == $familiar[none])
 	{
-		// not today's check yet: it waits for a familiar with nothing on. Say so once per start (run 100 day 4: the
-		// check never ran though the log showed a Skeleton of Crimbo Past wearing nothing all day).
+		// not today's check yet: it waits for a familiar. Say so once per start.
 		if(!auto_familiarEquipPullExplained)
 		{
 			auto_familiarEquipPullExplained = true;
-			auto_log_info("Familiar item pull is waiting: familiar [" + fam + "] is wearing [" + worn + "].", "blue");
+			auto_log_info("Familiar item pull is waiting for a familiar.", "blue");
 		}
 		return;
 	}
@@ -931,51 +931,62 @@ void auto_familiarEquipPull()
 	int reserve = get_property("auto_levelUpPullReserve") == "" ? 5 : get_property("auto_levelUpPullReserve").to_int();
 	if(pulls_remaining() <= reserve)
 	{
-		auto_log_info("Familiar slot is empty, but only " + pulls_remaining() + " pulls are left: keeping them.", "blue");
+		auto_log_info("Familiar item pull: only " + pulls_remaining() + " pulls are left, keeping them.", "blue");
 		return;
 	}
 	float baseMeat = get_property("auto_baseMeatPerFight") == "" ? 35.0 : get_property("auto_baseMeatPerFight").to_float();
 	float actions = get_property("auto_familiarActionsPerFight") == "" ? 0.3 : get_property("auto_familiarActionsPerFight").to_float();
-	int weight = familiar_weight(fam) + weight_adjustment();
+	// the familiar's weight without what it's wearing now, so each item is scored on the same base
+	int weight = familiar_weight(fam) + weight_adjustment() - numeric_modifier(worn, "Familiar Weight").to_int();
 	float[string] modWeight;
 	modWeight["Item Drop"] = 5.0;
 	modWeight["Meat Drop"] = 1.0;
 	modWeight["Monster Level"] = 1.0;
+	float score(item it)
+	{
+		if(it == $item[none])
+		{
+			return 0.0;
+		}
+		float total = 2 * numeric_modifier(it, "Familiar Weight");
+		foreach mod, w in modWeight
+		{
+			total += w * (numeric_modifier(fam, mod, weight, it) - numeric_modifier(fam, mod, weight, $item[none]));
+		}
+		return total + numeric_modifier(it, "Meat Bonus") * numeric_modifier(it, "Sporadic Damage Aura") * actions * 100.0 / baseMeat;
+	}
+	float wornScore = score(worn);
 	item best = $item[none];
-	float bestScore = auto_pullMinScore();
+	float bestGain = auto_pullMinScore();
 	item runnerUp = $item[none];
-	float runnerUpScore = 0.0;
+	float runnerUpGain = -999999.0;
 	foreach it, n in get_storage()
 	{
 		if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(fam) == it) || !auto_is_valid(it))
 		{
 			continue;
 		}
-		float score = 2 * numeric_modifier(it, "Familiar Weight");
-		foreach mod, w in modWeight
-		{
-			score += w * (numeric_modifier(fam, mod, weight, it) - numeric_modifier(fam, mod, weight, $item[none]));
-		}
-		score += numeric_modifier(it, "Meat Bonus") * numeric_modifier(it, "Sporadic Damage Aura") * actions * 100.0 / baseMeat;
-		if(score > bestScore)
+		float gain = score(it) - wornScore;
+		if(gain > bestGain)
 		{
 			best = it;
-			bestScore = score;
+			bestGain = gain;
 		}
-		if(score > runnerUpScore)
+		if(gain > runnerUpGain)
 		{
 			runnerUp = it;
-			runnerUpScore = score;
+			runnerUpGain = gain;
 		}
 	}
+	string wearing = worn == $item[none] ? "nothing" : worn + " (+" + wornScore + ")";
 	if(best == $item[none])
 	{
-		auto_log_info("Familiar slot is empty: nothing in Hagnk's is worth a pull for " + fam + " (best is " + runnerUp + " at +"
-			+ runnerUpScore + ", a pull needs +" + auto_pullMinScore() + ").", "blue");
+		auto_log_info("Familiar item pull: nothing in Hagnk's beats " + wearing + " on " + fam + " by enough to pay for a pull (best is "
+			+ runnerUp + " at +" + runnerUpGain + ", a pull needs +" + auto_pullMinScore() + ").", "blue");
 		return;
 	}
-	auto_log_info("Familiar slot is empty: pulling " + best + " from Hagnk's (score +" + bestScore + ", worth about "
-		+ (bestScore * auto_scorePointMeat()).to_int() + " Meat over the rest of the run).", "blue");
+	auto_log_info("Familiar item pull: " + best + " beats " + wearing + " on " + fam + " by +" + bestGain + ", worth about "
+		+ (bestGain * auto_scorePointMeat()).to_int() + " Meat over the rest of the run. Pulling it.", "blue");
 	cli_execute("pull 1 " + best + "; equip familiar " + best);
 }
 

@@ -1961,7 +1961,7 @@ boolean doTasks()
 	auto_emptyStorageWhenFree();
 	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl beats many pulls of Meat
 	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear
-	auto_familiarEquipPull();	// once a day while the familiar slot is empty: fill it from Hagnk's if that pays for the pull
+	auto_familiarEquipPull();	// once a day: a better familiar item from Hagnk's, if beating what's worn pays for the pull
 	auto_buySkills();		// formerly picky_buyskills() now moved here
 	awol_buySkills();
 	awol_useStuff();
