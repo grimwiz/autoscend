@@ -1387,6 +1387,13 @@ boolean adventureFailureHandler()
 	if(place.turns_spent > limit)
 	{
 		boolean tooManyAdventures = true;
+
+		// the check looks at the last zone, not the next one: once the S.O.C.K. is found the Airship is finished, so
+		// its count no longer matters (run 101 found it on the Airship's 54th turn and then aborted before moving on)
+		if(place == $location[The Penultimate Fantasy Airship] && internalQuestStatus("questL10Garbage") >= 7)
+		{
+			tooManyAdventures = false;
+		}
 		
 		//general override function
 		if ($locations[
