@@ -1380,13 +1380,59 @@ boolean councilMaintenance()
 	return false;
 }
 
+// A fingerprint of quest progress: KoLmafia's quest steps and progress counters. adventureFailureHandler uses it to
+// tell a slow zone (still progressing) from a stuck one.
+string auto_questFingerprint()
+{
+	string fp = "";
+	foreach prop in $strings[
+		blackForestProgress, booPeakProgress, chasmBridgeProgress, controlRoomUnlock, currentExtremity,
+		cyrptAlcoveEvilness, cyrptCrannyEvilness, cyrptNicheEvilness, cyrptNookEvilness, cyrptTotalEvilness,
+		desertExploration, fratboysDefeated, gnasirProgress, hiddenApartmentProgress, hiddenBowlingAlleyProgress,
+		hiddenHospitalProgress, hiddenOfficeProgress, hiddenTavernUnlock, hippiesDefeated, lowerChamberUnlock,
+		manorDrawerCount, middleChamberUnlock, oilPeakProgress, palindomeDudesDefeated, pyramidPosition,
+		questG01Meatcar, questG02Whitecastle, questG03Ego, questG04Nemesis, questG05Dark, questG06Delivery,
+		questG07Myst, questG08Moxie, questG09Muscle, questL02Larva, questL03Rat, questL04Bat, questL05Goblin,
+		questL06Friar, questL07Cyrptic, questL08Trapper, questL09Topping, questL10Garbage, questL11Black,
+		questL11Business, questL11Curses, questL11Desert, questL11Doctor, questL11MacGuffin, questL11Manor,
+		questL11Palindome, questL11Pyramid, questL11Ron, questL11Shen, questL11Spare, questL11Worship,
+		questL12HippyFrat, questL12War, questL13Final, questL13Warehouse, questM01Untinker, questM02Artist,
+		questM03Bugbear, questM05Toot, questM06Gourd, questM07Hammer, questM08Baker, questM09Rocks, questM10Azazel,
+		questM11Postal, questM12Pirate, questM13Escape, questM14Bounty, questM15Lol, questM16Temple, questM17Babies,
+		questM18Swamp, questM19Hippy, questM20Necklace, questM21Dance, questM22Shirt, questM23Meatsmith, questM24Doc,
+		questM25Armorer, questM26Oracle, sidequestArenaCompleted, sidequestFarmCompleted, sidequestJunkyardCompleted,
+		sidequestLighthouseCompleted, sidequestNunsCompleted, sidequestOrchardCompleted, spookyravenRecipeUsed,
+		twinPeakProgress, warProgress, zeppelinProtestors]
+	{
+		fp += get_property(prop) + "|";
+	}
+	return fp;
+}
+
 boolean adventureFailureHandler()
 {
 	location place = my_location();
 	int limit = (in_avantGuard() ? 100 : 50);
+	// The turn limit is a fuse against getting stuck, not against being slow: past it, abort only when no quest has
+	// moved for auto_stuckTurns (25) turns, or the zone passes three times the limit. Run 101's Airship needed 54
+	// turns (immateria found at steady intervals, only -5% combat) and the flat limit stopped it.
+	string fp = auto_questFingerprint();
+	if(fp != get_property("_auto_questFingerprint") || get_property("_auto_questProgressTurn") == "")
+	{
+		set_property("_auto_questFingerprint", fp);
+		set_property("_auto_questProgressTurn", my_turncount());
+	}
+	int sinceProgress = my_turncount() - get_property("_auto_questProgressTurn").to_int();
+	int stuckTurns = get_property("auto_stuckTurns") == "" ? 25 : get_property("auto_stuckTurns").to_int();
 	if(place.turns_spent > limit)
 	{
 		boolean tooManyAdventures = true;
+
+		if(place.turns_spent <= 3 * limit && sinceProgress < stuckTurns)
+		{
+			auto_log_debug(place + ": " + place.turns_spent + " turns, but quests moved " + sinceProgress + " turns ago, so not stuck.");
+			tooManyAdventures = false;
+		}
 
 		// the check looks at the last zone, not the next one: once the S.O.C.K. is found the Airship is finished, so
 		// its count no longer matters (run 101 found it on the Airship's 54th turn and then aborted before moving on)
@@ -1493,7 +1539,7 @@ boolean adventureFailureHandler()
 			{
 				print("You can bypass this once by executing the gCLI command:", "blue");
 				print("set auto_newbieOverride = true", "blue");
-				abort("We have spent " + place.turns_spent + " turns at '" + place + "' and that is bad... aborting.");
+				abort("We have spent " + place.turns_spent + " turns at '" + place + "' and no quest has moved for " + sinceProgress + " turns... aborting.");
 			}
 		}
 	}
