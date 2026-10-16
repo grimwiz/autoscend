@@ -1585,6 +1585,7 @@ boolean auto_smithLoathing(item it);
 int[item] auto_craftParts(item it);
 boolean auto_craftOne(item it);
 void auto_day2Prep();
+void auto_nonCombatPull(location place);
 float auto_statementScore(string statement, item it);
 item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, float turnValue, float pointMeat, float[item] netMeat, int[item] pullsNeeded);
 boolean auto_makeStorageCraft(item it);

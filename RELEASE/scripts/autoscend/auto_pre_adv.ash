@@ -964,6 +964,7 @@ boolean auto_pre_adventure()
 	// EQUIP MAXIMIZED GEAR
 	auto_ghost_prep(place);
 	equipMaximizedGear();
+	auto_nonCombatPull(place);	// once per zone: -combat gear from Hagnk's if this zone asks for a lower combat rate
 	auto_handleRetrocape(); // has to be done after equipMaximizedGear otherwise the maximizer reconfigures it
 	auto_handleParka(); //same as retrocape above
 

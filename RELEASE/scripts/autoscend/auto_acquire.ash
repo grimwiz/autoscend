@@ -1328,6 +1328,57 @@ void auto_levelUpPull()
 	}
 }
 
+// Gear for a zone that wants a lower combat rate (its statement carries a "-combat" term, as providePlusNonCombat
+// adds for the Airship and other noncombat-gated zones): the level-up pull scores gear on the general statement and
+// never sees combat rate, so -5% items sat in Hagnk's while run 101's Airship ran at -5% and took 54 turns. Once per
+// zone per ascension, ask the maximizer (mall buying off) what pulls would improve this zone's statement and take the
+// ones that lower combat rate, keeping auto_levelUpPullReserve. A turn saved is worth more than a pull, and the
+// maximizer's -combat weight (200 a point against 1 for ML) already trades ML away for it. auto_nonCombatPulls =
+// false turns it off.
+void auto_nonCombatPull(location place)
+{
+	if(get_property("auto_nonCombatPulls") == "false" || in_hardcore() || can_interact())
+	{
+		return;
+	}
+	string statement = get_property("auto_maximize_current");
+	if(!create_matcher("(?:^|,)\\s*-[0-9.]*\\s*combat", statement.to_lower_case()).find())
+	{
+		return;
+	}
+	string[int] doneParts = split_string(get_property("auto_nonCombatPullDone"), ":");
+	string done = doneParts[0] == my_ascensions().to_string() && count(doneParts) > 1 ? doneParts[1] : "";
+	if(("," + done + ",").contains_text("," + place.to_int() + ","))
+	{
+		return;
+	}
+	set_property("auto_nonCombatPullDone", my_ascensions() + ":" + done + (done == "" ? "" : ",") + place.to_int());
+	int reserve = get_property("auto_levelUpPullReserve") == "" ? 5 : get_property("auto_levelUpPullReserve").to_int();
+	string mallSetting = get_property("autoSatisfyWithMall");
+	set_property("autoSatisfyWithMall", "false");
+	try
+	{
+		foreach i, entry in maximize(statement, 0, 0, 2, "equip")
+		{
+			if(pulls_remaining() <= reserve)
+			{
+				break;
+			}
+			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || numeric_modifier(entry.item, "Combat Rate") >= 0)
+			{
+				continue;
+			}
+			auto_log_info(place + " wants a lower combat rate (now " + numeric_modifier("Combat Rate") + "%): " + entry.display
+				+ " (" + numeric_modifier(entry.item, "Combat Rate") + "%).", "blue");
+			cli_execute(entry.command);
+		}
+	}
+	finally
+	{
+		set_property("autoSatisfyWithMall", mallSetting);
+	}
+}
+
 // Day 2 prep. Day 1 is short of Meat and pulls; by day 2 there is some leeway, so set up the tools that let autoscend
 // make things rather than pull them: a tenderizing hammer for smithing (the Nemesis quest needs one later anyway, and
 // Hagnk's usually has one, so it is pulled, never bought here), an oven for cooking and a cocktailcrafting kit for
