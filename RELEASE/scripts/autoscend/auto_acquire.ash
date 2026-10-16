@@ -265,16 +265,11 @@ void auto_emptyStorageWhenFree()
 }
 
 // The Clothing of Loathing is smithed from one Hatred piece (Yog-Urt) and one Violence piece (Shub-Jigguwatt), each
-// dropped for one class only, so the halves pile up in Hagnk's over many ascensions. Once Hagnk's is emptied, ask
-// (once per ascension) whether to make each Loathing item that isn't owned yet and whose two halves are both in hand.
-void auto_offerLoathingItems()
+// dropped for one class only, so the halves pile up in Hagnk's over many ascensions. KoLmafia lists these recipes as
+// MANUAL, and "currently ignores MANUAL recipes entirely": create() can't make them and get_ingredients() is empty.
+// So the pairs are written out here and smithed on the smithing page (needs a tenderizing hammer in inventory).
+int[item] auto_loathingHalves(item it)
 {
-	if(get_property("auto_loathingOffered").to_int() == my_ascensions())
-	{
-		return;
-	}
-	set_property("auto_loathingOffered", my_ascensions());
-	//written out because get_ingredients() is empty while KoLmafia thinks you can't smith
 	item[item] hatred = {
 		$item[Belt of Loathing] : $item[Girdle of Hatred],
 		$item[Goggles of Loathing] : $item[Lens of Hatred],
@@ -291,26 +286,100 @@ void auto_offerLoathingItems()
 		$item[Stick-Knife of Loathing] : $item[Pigsticker of Violence],
 		$item[Treads of Loathing] : $item[Ass-Stompers of Violence]
 	};
-	foreach it, hate in hatred
+	int[item] halves;
+	if(hatred contains it)
 	{
-		if(available_amount(it) + storage_amount(it) + display_amount(it) > 0
-			|| item_amount(hate) == 0 || item_amount(violence[it]) == 0)
+		halves[hatred[it]] = 1;
+		halves[violence[it]] = 1;
+	}
+	return halves;
+}
+
+boolean auto_smithLoathing(item it)
+{
+	int[item] halves = auto_loathingHalves(it);
+	if(count(halves) != 2 || item_amount($item[tenderizing hammer]) == 0)
+	{
+		return false;
+	}
+	string url = "craft.php?action=craft&mode=smith&pwd&qty=1";
+	string ab = "a";
+	foreach half in halves
+	{
+		if(item_amount(half) == 0)
+		{
+			return false;
+		}
+		url += "&" + ab + "=" + half.to_int();
+		ab = "b";
+	}
+	int before = item_amount(it);
+	visit_url(url);
+	return item_amount(it) > before;
+}
+
+// The parts of something craftable: KoLmafia's recipe, or a Loathing pair once there is a hammer to smith it with.
+int[item] auto_craftParts(item it)
+{
+	int[item] parts = get_ingredients(it);
+	if(count(parts) == 0 && item_amount($item[tenderizing hammer]) > 0)
+	{
+		parts = auto_loathingHalves(it);
+	}
+	return parts;
+}
+
+boolean auto_craftOne(item it)
+{
+	if(count(get_ingredients(it)) == 0 && count(auto_loathingHalves(it)) > 0)
+	{
+		return auto_smithLoathing(it);
+	}
+	return create(1, it);
+}
+
+// Once Hagnk's is emptied, ask (once per ascension) whether to make each Loathing item that isn't owned yet and whose
+// two halves are both in hand.
+void auto_offerLoathingItems()
+{
+	if(get_property("auto_loathingOffered").to_int() == my_ascensions())
+	{
+		return;
+	}
+	set_property("auto_loathingOffered", my_ascensions());
+	foreach it in $items[Belt of Loathing, Goggles of Loathing, Jeans of Loathing, Scepter of Loathing, Stick-Knife of Loathing, Treads of Loathing]
+	{
+		if(available_amount(it) + storage_amount(it) + display_amount(it) > 0)
 		{
 			continue;
 		}
-		string halves = hate + " + " + violence[it];
-		if(available_amount($item[tenderizing hammer]) == 0)
+		string halves = "";
+		boolean haveBoth = true;
+		foreach half in auto_loathingHalves(it)
 		{
-			auto_log_info("You can make " + it + " from " + halves + ", but smithing it needs a tenderizing hammer.", "blue");
+			halves += (halves == "" ? "" : " + ") + half;
+			haveBoth = haveBoth && item_amount(half) > 0;
+		}
+		if(!haveBoth)
+		{
 			continue;
 		}
-		if(user_confirm("You have " + halves + ". Make " + it + " from them (this uses both up)? Will default to 'No' in 60 seconds.", 60000, false))
+		if(item_amount($item[tenderizing hammer]) == 0)
 		{
-			create(1, it);
+			auto_log_info("You can make " + it + " from " + halves + ", but smithing it needs a tenderizing hammer in inventory.", "blue");
+			continue;
+		}
+		if(!user_confirm("You have " + halves + ". Make " + it + " from them (this uses both up)? Will default to 'No' in 60 seconds.", 60000, false))
+		{
+			auto_log_info("Not making " + it + " (from " + halves + ").", "blue");
+		}
+		else if(auto_smithLoathing(it))
+		{
+			auto_log_info("Made " + it + ".", "blue");
 		}
 		else
 		{
-			auto_log_info("Not making " + it + ". To make it later: create 1 " + it, "blue");
+			auto_log_warning("Smithing " + it + " didn't work; it can be made on the smithing page (needs an adventure and a tenderizing hammer).", "red");
 		}
 	}
 }
@@ -910,6 +979,179 @@ void auto_familiarEquipPull()
 	cli_execute("pull 1 " + best + "; equip familiar " + best);
 }
 
+// The maximizer can only score gear you own, so gear that would have to be made first is scored here: each term of a
+// maximizer statement ("5item, meat, 0.5initiative, 0.2mp 1000max, ...") times the item's modifier. Close to the
+// maximizer's own score for plain modifiers; derived ones (HP from Muscle, and so on) are left out on both sides of a
+// comparison. Caps ("N max") are applied to the character's current total. Unknown terms are skipped.
+float auto_statementScore(string statement, item it)
+{
+	string[string] alias = {
+		"item" : "Item Drop", "items" : "Item Drop", "meat" : "Meat Drop", "init" : "Initiative", "initiative" : "Initiative",
+		"da" : "Damage Absorption", "dr" : "Damage Reduction", "hp" : "Maximum HP", "mp" : "Maximum MP",
+		"ml" : "Monster Level", "exp" : "Experience", "familiar exp" : "Familiar Experience", "adv" : "Adventures",
+		"adventures" : "Adventures", "fites" : "PvP Fights", "crit" : "Critical Hit Percent", "spell crit" : "Spell Critical Percent"
+	};
+	float score = 0.0;
+	foreach i, raw in split_string(statement, ",")
+	{
+		string term = raw.trim().to_lower_case();
+		if(term == "" || term.starts_with("+") || term.starts_with("-equip") || term.starts_with("-tie") || term == "-fumble" || term == "effective")
+		{
+			continue;
+		}
+		matcher m = create_matcher("^(-?[0-9.]*)\\s*([a-z][a-z %']*?)\\s*(?:(-?[0-9.]+)\\s*max)?\\s*(?:(-?[0-9.]+)\\s*min)?$", term);
+		if(!m.find())
+		{
+			continue;
+		}
+		float w = m.group(1) == "" ? 1.0 : (m.group(1) == "-" ? -1.0 : m.group(1).to_float());
+		string key = m.group(2).trim();
+		float value = 0.0;
+		float current = 0.0;
+		boolean plain = false;
+		if(key == "mainstat" || key == "mus" || key == "muscle" || key == "myst" || key == "mysticality" || key == "mox" || key == "moxie")
+		{
+			stat st = key == "mainstat" ? my_primestat() : (key.starts_with("mus") ? $stat[Muscle] : (key.starts_with("mys") ? $stat[Mysticality] : $stat[Moxie]));
+			value = numeric_modifier(it, st.to_string()) + numeric_modifier(it, st + " Percent") * my_basestat(st) / 100.0;
+		}
+		else if(key == "all res" || key == "all resistance" || key == "elemental damage")
+		{
+			string suffix = key == "elemental damage" ? " Damage" : " Resistance";
+			foreach el in $strings[Hot, Cold, Spooky, Stench, Sleaze]
+			{
+				value += numeric_modifier(it, el + suffix);
+			}
+		}
+		else if(key == "mp regen" || key == "hp regen")
+		{
+			string which = key == "mp regen" ? "MP" : "HP";
+			value = (numeric_modifier(it, which + " Regen Min") + numeric_modifier(it, which + " Regen Max")) / 2.0;
+		}
+		else
+		{
+			string mod = alias contains key ? alias[key] : key;
+			value = numeric_modifier(it, mod);
+			current = numeric_modifier(mod);
+			plain = true;
+		}
+		if(plain && m.group(3) != "")
+		{
+			// capped: only the part that still fits under the cap counts
+			float cap = m.group(3).to_float();
+			value = min(current + value, cap) - min(current, cap);
+		}
+		score += w * value;
+	}
+	return score;
+}
+
+// Gear that can be made from items in Hagnk's (and inventory): KoLmafia's maximizer offers what can be made from
+// inventory, and what can be pulled whole, but never "pull the parts, then make it". Only recipes KoLmafia can make
+// right now count (a tenderizing hammer for smithing, jewelry-making pliers for jewelry, and so on), one level deep.
+// Returns the best one whose gain over what's worn in its slot pays for its pulls and crafting turns, with what it
+// is worth net in Meat; $item[none] if none does.
+item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, float turnValue, float pointMeat, float[item] netMeat, int[item] pullsNeeded)
+{
+	item best = $item[none];
+	float bestNet = 0.0;
+	foreach it in $items[]
+	{
+		slot sl = to_slot(it);
+		if(!($slots[hat, weapon, off-hand, back, shirt, pants, acc1] contains sl) || available_amount(it) > 0 || !can_equip(it) || !auto_is_valid(it))
+		{
+			continue;
+		}
+		int[item] parts = auto_craftParts(it);
+		if(count(parts) == 0)
+		{
+			continue;
+		}
+		int pulls = 0;
+		boolean ok = true;
+		foreach part, qty in parts
+		{
+			int missing = max(0, qty - item_amount(part));
+			if(missing > 0 && (storage_amount(part) < missing || !canPull(part)))
+			{
+				ok = false;
+			}
+			pulls += missing;
+		}
+		// nothing to pull: the maximizer already offers it as "make"
+		if(!ok || pulls == 0 || pulls > pullsFree)
+		{
+			continue;
+		}
+		float worn;
+		if(sl == $slot[acc1])
+		{
+			worn = 999999.0;
+			foreach acc in $slots[acc1, acc2, acc3]
+			{
+				worn = min(worn, auto_statementScore(statement, equipped_item(acc)));
+			}
+		}
+		else if(sl == $slot[weapon] && weapon_hands(it) > 1)
+		{
+			worn = auto_statementScore(statement, equipped_item($slot[weapon])) + auto_statementScore(statement, equipped_item($slot[off-hand]));
+		}
+		else if(sl == $slot[off-hand] && weapon_hands(equipped_item($slot[weapon])) > 1)
+		{
+			continue;
+		}
+		else
+		{
+			worn = auto_statementScore(statement, equipped_item(sl));
+		}
+		float gain = auto_statementScore(statement, it) - worn;
+		// smithing a Loathing pair is a manual recipe KoLmafia can't time: count it as one adventure
+		int turns = count(get_ingredients(it)) > 0 ? max(0, creatable_turns(it, 1, true)) : 1;
+		float net = gain * pointMeat - pulls * pullValue - turns * turnValue;
+		if(net > bestNet)
+		{
+			best = it;
+			bestNet = net;
+			netMeat[it] = net;
+			pullsNeeded[it] = pulls;
+		}
+	}
+	return best;
+}
+
+// Pull the missing parts, make the item and wear it.
+boolean auto_makeStorageCraft(item it)
+{
+	foreach part, qty in auto_craftParts(it)
+	{
+		int missing = max(0, qty - item_amount(part));
+		if(missing > 0 && !take_storage(missing, part))
+		{
+			return false;
+		}
+	}
+	if(!auto_craftOne(it))
+	{
+		return false;
+	}
+	slot sl = to_slot(it);
+	if(sl == $slot[acc1])
+	{
+		// replace the accessory that adds least
+		float least = 999999.0;
+		string statement = get_property("auto_maximize_current");
+		foreach acc in $slots[acc1, acc2, acc3]
+		{
+			float score = auto_statementScore(statement, equipped_item(acc));
+			if(score < least)
+			{
+				least = score;
+				sl = acc;
+			}
+		}
+	}
+	return equip(sl, it);
+}
+
 // Once per level in Ronin: ask the maximizer, with Hagnk's included, whether pulling one piece of equipment would
 // improve the gear autoscend is currently after, and pull and wear the best one. Items pulled at level 1 are often
 // outgrown by level 7, so this keeps the gear current as the run goes. Keeps auto_levelUpPullReserve pulls (5) for
@@ -966,6 +1208,34 @@ void auto_levelUpPull()
 			slotCommand[sl] = entry.command;
 			slotWhat[sl] = entry.display;
 		}
+	}
+	// Gear that has to be made from parts in Hagnk's competes for the level's pick on Meat net of its pulls and crafting
+	// turns (a pair of Loathing halves costs two pulls), against the best single pull's net.
+	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float pointMeat = auto_scorePointMeat();
+	float singleNet = 0.0;
+	foreach sl, score in slotBest
+	{
+		singleNet = max(singleNet, score * pointMeat - pullValue);
+	}
+	float[item] craftNet;
+	int[item] craftPulls;
+	item craft = auto_bestStorageCraft(statement, pulls_remaining() - reserve, pullValue, turnValue, pointMeat, craftNet, craftPulls);
+	if(craft != $item[none] && craftNet[craft] > singleNet)
+	{
+		string parts = "";
+		foreach part in auto_craftParts(craft)
+		{
+			parts += (parts == "" ? "" : " + ") + part;
+		}
+		auto_log_info("Level " + my_level() + ": best gain is making " + craft + " from " + parts + " in Hagnk's (" + craftPulls[craft]
+			+ " pulls, worth about " + craftNet[craft].to_int() + " Meat net; the best single pull nets " + singleNet.to_int() + ").", "blue");
+		if(auto_makeStorageCraft(craft))
+		{
+			return;
+		}
+		auto_log_warning("Couldn't make " + craft + "; taking the best single pull instead.", "red");
 	}
 	for(int n = 0; n < maxPulls && pulls_remaining() > reserve; n++)
 	{
