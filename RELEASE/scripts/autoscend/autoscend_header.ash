@@ -2246,6 +2246,7 @@ int auto_reserveAmount(item it);
 int auto_reserveCraftAmount(item orig_it);
 int auto_convertDesiredML(int DML);
 boolean auto_setMCDToCap();
+float auto_mlSurvivalShare();
 int auto_safeML(location place);
 int auto_safeML(location place, int[string] limits);
 float[string] auto_mlUnlockPerPoint(location place);
