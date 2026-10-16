@@ -1641,6 +1641,7 @@ float rollover_value(item it);
 float rollover_improvement(item it, slot sl);
 void bedtime_pulls_rollover_equip();
 void bedtime_pulls();
+void bedtime_pulls_prep();
 boolean doBedtime();
 
 ########################################################################################################

@@ -590,6 +590,72 @@ void bedtime_pulls()
 	{
 		pullXWhenHaveY($item[11-Leaf Clover], 1, item_amount($item[11-Leaf Clover]));
 	}
+
+	// pulls don't carry over: whatever is left goes on things needed later in the run
+	bedtime_pulls_prep();
+}
+
+// Last call on the day's pulls, after food, drink, rollover gear and the rest: a tenderizing hammer (smithing; the
+// Nemesis quest needs one later anyway), then gear that lowers combat rate while a noncombat-heavy zone is still
+// ahead (the Airship, Spookyraven Manor, the Hidden Temple), best first, one per slot and three accessories. Run 101's
+// Airship took 54 turns at -5% combat with five -5% items sitting in Hagnk's.
+void bedtime_pulls_prep()
+{
+	item hammer = $item[tenderizing hammer];
+	if(pulls_remaining() > 0 && available_amount(hammer) == 0 && storage_amount(hammer) > 0 && canPull(hammer))
+	{
+		auto_log_info("Spare pull at bedtime: a tenderizing hammer for smithing.", "blue");
+		pullXWhenHaveY(hammer, 1, 0);
+	}
+	boolean ncZonesAhead = internalQuestStatus("questL10Garbage") < 7 || internalQuestStatus("questL11Manor") < 3
+		|| get_property("lastTempleUnlock").to_int() != my_ascensions();
+	if(pulls_remaining() < 1 || !ncZonesAhead || in_lol())
+	{
+		return;
+	}
+	int[slot] wanted = {$slot[hat]: 1, $slot[weapon]: 1, $slot[off-hand]: 1, $slot[back]: 1, $slot[shirt]: 1, $slot[pants]: 1, $slot[acc1]: 3};
+	int[slot] have;
+	item[int] candidates;
+	foreach it in get_inventory()
+	{
+		if(numeric_modifier(it, "Combat Rate") < 0 && wanted contains to_slot(it))
+		{
+			have[to_slot(it)] += 1;
+		}
+	}
+	foreach sl in $slots[hat, weapon, off-hand, back, shirt, pants, acc1, acc2, acc3]
+	{
+		item worn = equipped_item(sl);
+		if(numeric_modifier(worn, "Combat Rate") < 0 && worn != $item[none])
+		{
+			have[to_slot(worn)] += 1;
+		}
+	}
+	foreach it, n in get_storage()
+	{
+		if(numeric_modifier(it, "Combat Rate") < 0 && wanted contains to_slot(it) && can_equip(it) && auto_is_valid(it) && item_amount(it) == 0)
+		{
+			candidates[count(candidates)] = it;
+		}
+	}
+	sort candidates by numeric_modifier(value, "Combat Rate");
+	foreach i, it in candidates
+	{
+		slot sl = to_slot(it);
+		if(pulls_remaining() < 1)
+		{
+			break;
+		}
+		if(have[sl] >= wanted[sl] || !canPull(it))
+		{
+			continue;
+		}
+		auto_log_info("Spare pull at bedtime: " + it + " (" + numeric_modifier(it, "Combat Rate") + "% combat) for the noncombat zones ahead.", "blue");
+		if(pullXWhenHaveY(it, 1, 0))
+		{
+			have[sl] += 1;
+		}
+	}
 }
 
 boolean doBedtime()
