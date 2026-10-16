@@ -1079,14 +1079,24 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 		}
 		int pulls = 0;
 		boolean ok = true;
-		foreach part, qty in parts
+		// the finished item already in Hagnk's is one pull and no crafting (run 101 made a Mark IV Steam-Hat from two
+		// pulls with one in Hagnk's)
+		boolean whole = storage_amount(it) > 0 && canPull(it);
+		if(whole)
 		{
-			int missing = max(0, qty - item_amount(part));
-			if(missing > 0 && (storage_amount(part) < missing || !canPull(part)))
+			pulls = 1;
+		}
+		else
+		{
+			foreach part, qty in parts
 			{
-				ok = false;
+				int missing = max(0, qty - item_amount(part));
+				if(missing > 0 && (storage_amount(part) < missing || !canPull(part)))
+				{
+					ok = false;
+				}
+				pulls += missing;
 			}
-			pulls += missing;
 		}
 		// nothing to pull: the maximizer already offers it as "make"
 		if(!ok || pulls == 0 || pulls > pullsFree)
@@ -1116,7 +1126,7 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 		}
 		float gain = auto_statementScore(statement, it) - worn;
 		// smithing a Loathing pair is a manual recipe KoLmafia can't time: count it as one adventure
-		int turns = count(get_ingredients(it)) > 0 ? max(0, creatable_turns(it, 1, true)) : 1;
+		int turns = whole ? 0 : (count(get_ingredients(it)) > 0 ? max(0, creatable_turns(it, 1, true)) : 1);
 		float net = gain * pointMeat - pulls * pullValue - turns * turnValue;
 		if(net > bestNet)
 		{
@@ -1129,20 +1139,30 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 	return best;
 }
 
-// Pull the missing parts, make the item and wear it.
+// Pull the item if Hagnk's has it whole; otherwise pull the missing parts and make it. Then wear it.
 boolean auto_makeStorageCraft(item it)
 {
-	foreach part, qty in auto_craftParts(it)
+	if(storage_amount(it) > 0 && canPull(it))
 	{
-		int missing = max(0, qty - item_amount(part));
-		if(missing > 0 && !take_storage(missing, part))
+		if(!take_storage(1, it))
 		{
 			return false;
 		}
 	}
-	if(!auto_craftOne(it))
+	else
 	{
-		return false;
+		foreach part, qty in auto_craftParts(it)
+		{
+			int missing = max(0, qty - item_amount(part));
+			if(missing > 0 && !take_storage(missing, part))
+			{
+				return false;
+			}
+		}
+		if(!auto_craftOne(it))
+		{
+			return false;
+		}
 	}
 	slot sl = to_slot(it);
 	if(sl == $slot[acc1])
@@ -1199,26 +1219,39 @@ void auto_levelUpPull()
 	float[slot] slotBest;
 	string[slot] slotCommand;
 	string[slot] slotWhat;
-	foreach i, entry in maximize(statement, 0, 0, 2, "equip")
+	// The maximizer gives only its best suggestion per slot. With autoSatisfyWithMall on, that can be "buy & pull" (mall
+	// to Hagnk's, then pull), which is skipped here, and the slot's best pull-only item is never seen: run 101's level
+	// 9 hat slot offered only a Space Soldier Helmet to buy, hiding the Mark IV and V Steam-Hats in Hagnk's. So ask
+	// with mall buying off.
+	string mallSetting = get_property("autoSatisfyWithMall");
+	set_property("autoSatisfyWithMall", "false");
+	try
 	{
-		if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || entry.score <= minScore)
+		foreach i, entry in maximize(statement, 0, 0, 2, "equip")
 		{
-			continue;
+			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || entry.score <= minScore)
+			{
+				continue;
+			}
+			matcher m = create_matcher("equip (\\S+) ", entry.command);
+			slot sl = m.find() ? m.group(1).to_slot() : $slot[none];
+			// an empty off-hand beside a two-handed weapon is empty on purpose; so is the familiar slot with no familiar
+			if(sl == $slot[none] || (sl == $slot[off-hand] && weapon_hands(equipped_item($slot[weapon])) > 1)
+				|| (sl == $slot[familiar] && my_familiar() == $familiar[none]))
+			{
+				continue;
+			}
+			if(entry.score > slotBest[sl])
+			{
+				slotBest[sl] = entry.score;
+				slotCommand[sl] = entry.command;
+				slotWhat[sl] = entry.display;
+			}
 		}
-		matcher m = create_matcher("equip (\\S+) ", entry.command);
-		slot sl = m.find() ? m.group(1).to_slot() : $slot[none];
-		// an empty off-hand beside a two-handed weapon is empty on purpose; so is the familiar slot with no familiar
-		if(sl == $slot[none] || (sl == $slot[off-hand] && weapon_hands(equipped_item($slot[weapon])) > 1)
-			|| (sl == $slot[familiar] && my_familiar() == $familiar[none]))
-		{
-			continue;
-		}
-		if(entry.score > slotBest[sl])
-		{
-			slotBest[sl] = entry.score;
-			slotCommand[sl] = entry.command;
-			slotWhat[sl] = entry.display;
-		}
+	}
+	finally
+	{
+		set_property("autoSatisfyWithMall", mallSetting);
 	}
 	// Gear that has to be made from parts in Hagnk's competes for the level's pick on Meat net of its pulls and crafting
 	// turns (a pair of Loathing halves costs two pulls), against the best single pull's net.
@@ -1235,13 +1268,18 @@ void auto_levelUpPull()
 	item craft = auto_bestStorageCraft(statement, pulls_remaining() - reserve, pullValue, turnValue, pointMeat, craftNet, craftPulls);
 	if(craft != $item[none] && craftNet[craft] > singleNet)
 	{
-		string parts = "";
-		foreach part in auto_craftParts(craft)
+		string how = "pulling " + craft + " (1 pull)";
+		if(storage_amount(craft) == 0)
 		{
-			parts += (parts == "" ? "" : " + ") + part;
+			string parts = "";
+			foreach part in auto_craftParts(craft)
+			{
+				parts += (parts == "" ? "" : " + ") + part;
+			}
+			how = "making " + craft + " from " + parts + " (" + craftPulls[craft] + " pulls)";
 		}
-		auto_log_info("Level " + my_level() + ": best gain is making " + craft + " from " + parts + " in Hagnk's (" + craftPulls[craft]
-			+ " pulls, worth about " + craftNet[craft].to_int() + " Meat net; the best single pull nets " + singleNet.to_int() + ").", "blue");
+		auto_log_info("Level " + my_level() + ": best gain is " + how + " from Hagnk's, worth about " + craftNet[craft].to_int()
+			+ " Meat net; the best single pull the maximizer offered nets " + singleNet.to_int() + ".", "blue");
 		if(auto_makeStorageCraft(craft))
 		{
 			return;
