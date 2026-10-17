@@ -1985,8 +1985,9 @@ int cloversAvailable(boolean override)
 			acquireHermitItem($item[11-Leaf Clover]);
 			numClovers += item_amount($item[11-Leaf Clover]);
 		}
-		//if none at hermit, try to pull one
-		if (numClovers == 0)
+		//if none at hermit, try to pull one - unless an Astral Energy Drink can be chewed instead: it costs only spleen,
+		//which nothing else in Ronin may be using, where a pull is gone for the day
+		if (numClovers == 0 && min(available_amount($item[[10883]Astral Energy Drink]), floor(spleen_left() / 5)) == 0)
 		{
 			pullXWhenHaveY($item[11-Leaf Clover], 1, item_amount($item[11-Leaf Clover]));
 			numClovers += item_amount($item[11-Leaf Clover]);
