@@ -4963,14 +4963,19 @@ void auto_mlBuffMP(int cap)
 	{
 		return;
 	}
-	int ml = monster_level_adjustment();
+	// only for buffs the MCD and gear can't stand in for (auto_paidMLFits)
+	int ml = auto_mlWithoutMcd();
 	int need = 0;
+	if(ml + highest_available_mcd() >= cap)
+	{
+		return;
+	}
 	if(auto_have_skill($skill[Ur-Kel\'s Aria of Annoyance]) && have_effect($effect[Ur-Kel\'s Aria of Annoyance]) == 0 && ml + 2 * my_level() <= cap)
 	{
 		need += mp_cost($skill[Ur-Kel\'s Aria of Annoyance]);
 		ml += 2 * my_level();
 	}
-	if(auto_have_skill($skill[Drescher\'s Annoying Noise]) && have_effect($effect[Drescher\'s Annoying Noise]) == 0 && ml + 10 <= cap)
+	if(auto_have_skill($skill[Drescher\'s Annoying Noise]) && have_effect($effect[Drescher\'s Annoying Noise]) == 0 && ml + highest_available_mcd() < cap && ml + 10 <= cap)
 	{
 		need += mp_cost($skill[Drescher\'s Annoying Noise]);
 	}
@@ -4981,6 +4986,19 @@ void auto_mlBuffMP(int cap)
 	}
 }
 
+// ML that costs nothing to change: the Mind Control Device can go anywhere from 0 to its highest setting each
+// adventure. A paid ML buff is worth casting only when the ML from gear, effects already running and the MCD at its
+// highest still falls short of the goal; and it fits if it stays under the goal once the MCD is turned down.
+int auto_mlWithoutMcd()
+{
+	return monster_level_adjustment() - current_mcd();
+}
+
+boolean auto_paidMLFits(int buffML, int cap)
+{
+	return auto_mlWithoutMcd() + highest_available_mcd() < cap && auto_mlWithoutMcd() + buffML <= cap;
+}
+
 // We use this function to determine the suitability of using Ur-Kel's
 boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit)
 {
@@ -4989,7 +5007,7 @@ boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit)
 		return false;
 	}
 
-	if((have_effect($effect[Ur-Kel\'s Aria of Annoyance]) == 0) && ((monster_level_adjustment() + (2 * my_level())) <= auto_convertDesiredML(UrKelToML)))
+	if((have_effect($effect[Ur-Kel\'s Aria of Annoyance]) == 0) && auto_paidMLFits(2 * my_level(), auto_convertDesiredML(UrKelToML)))
 	{
 		if((get_property("auto_MLSafetyLimit") == "") || (((2 * my_level()) <= UrKelUpperLimit) && ((2 * my_level()) >= UrKelLowerLimit)))
 		{
@@ -5009,7 +5027,7 @@ boolean angryAgateCheck(int angryAgateToML, int angryAgateUpperLimit, int angryA
 		return false;
 	}
 
-	if((have_effect($effect[misplaced rage]) == 0) && ((monster_level_adjustment() + (3 * my_level())) <= auto_convertDesiredML(angryAgateToML)))
+	if((have_effect($effect[misplaced rage]) == 0) && auto_paidMLFits(3 * my_level(), auto_convertDesiredML(angryAgateToML)))
 	{
 		if((get_property("auto_MLSafetyLimit") == "") || (((3 * my_level()) <= angryAgateUpperLimit) && ((3 * my_level()) >= angryAgateLowerLimit)))
 		{
@@ -5030,7 +5048,9 @@ boolean auto_MaxMLToCap(int ToML, boolean doAltML)
 	{
 		foreach eff in effects
 		{
-			if(monster_level_adjustment() + numeric_modifier(eff, "Monster Level") <= auto_convertDesiredML(ToML))
+			// one already running is kept up while the ML, with the MCD turned down, is still within the goal
+			int cap = auto_convertDesiredML(ToML);
+			if((have_effect(eff) > 0 && auto_mlWithoutMcd() <= cap) || auto_paidMLFits(numeric_modifier(eff, "Monster Level").to_int(), cap))
 			{
 				buffMaintain(eff);
 			}

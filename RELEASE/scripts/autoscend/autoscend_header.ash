@@ -2257,6 +2257,8 @@ int auto_safeML(location place, int[string] limits);
 float[string] auto_mlUnlockPerPoint(location place);
 string auto_addStatementWeight(string statement, string keyword, float extra);
 void auto_mlBuffMP(int cap);
+int auto_mlWithoutMcd();
+boolean auto_paidMLFits(int buffML, int cap);
 boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit);
 boolean angryAgateCheck(int angryAgateToML, int angryAgateUpperLimit, int angryAgateLowerLimit);
 boolean auto_MaxMLToCap(int ToML, boolean doAltML);

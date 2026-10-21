@@ -901,6 +901,9 @@ float auto_scorePointMeat()
 // The gain a pulled piece of gear must show to pay for its pull (auto_pullValue, 1,000 Meat). Gear earns every fight
 // it's worn, so the bar is low early (3.4 points at turn 0) and climbs as the run ends (6.4 at turn 420, 31 at turn
 // 800). auto_levelUpPullMinScore fixes it instead.
+// The least gain a gear pull must make: what a pull is worth, and at least auto_pullMinScorePerLevel (default 2) points
+// per level, so a pull isn't spent on a trivial upgrade. Run 102's level 6 'Fro Pick (+11.8 over the hat pulled at
+// level 4) passed the pull-value test early in the run, when every point counts for many fights.
 float auto_pullMinScore()
 {
 	if(get_property("auto_levelUpPullMinScore") != "")
@@ -909,7 +912,8 @@ float auto_pullMinScore()
 	}
 	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
 	float pointMeat = auto_scorePointMeat();
-	return pointMeat <= 0.0 ? 999999.0 : pullValue / pointMeat;
+	float perLevel = get_property("auto_pullMinScorePerLevel") == "" ? 2.0 : get_property("auto_pullMinScorePerLevel").to_float();
+	return pointMeat <= 0.0 ? 999999.0 : max(pullValue / pointMeat, perLevel * my_level());
 }
 
 // The familiar's equipment slot: once a day in Ronin, the best stored item the familiar can wear is pulled if what it
