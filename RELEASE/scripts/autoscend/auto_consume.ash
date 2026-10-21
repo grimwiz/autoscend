@@ -2314,10 +2314,92 @@ boolean stillReachable()
 // Run 102's day 1 bought 60 Doc Galaktik's tonics (about 5,100 Meat) while the still sat unused until bedtime, so once
 // the still is reachable make tonic water whenever none is held, from Meat above the reserve. Uses that bedtime wants
 // for improved booze from bottles already held are left for it.
+// Hold at least qty of a still-improved ingredient, distilling one more from its NPC-store origin if short.
+boolean auto_stillMake(item target, int qty)
+{
+	if(item_amount(target) >= qty)
+	{
+		return true;
+	}
+	if(item_amount(target) < qty - 1)
+	{
+		return false;	//one at a time: the caller asks again for the next
+	}
+	item origin = still_targetToOrigin(target);
+	if(item_amount(origin) == 0 && (npc_price(origin) == 0 || my_meat() < meatReserve() + npc_price(origin) || !auto_buyUpTo(1, origin)))
+	{
+		return false;
+	}
+	return distill(target);
+}
+
+// The Advanced Cocktailcrafting drinks (gimlet, Divine, tangarita, prussian cathouse, vodka stratocaster) give 14-18
+// adventures for 4 drunkenness, the same per drunkenness as the half-size sidecars run 102's day 1 pulled seven of. Each
+// is a still-improved booze and mixer mixed together, plus a garnish that the Advanced Cocktailcrafting skill summons
+// daily. So with a cocktailcrafting kit, summon the garnishes and distill the pair for each one, and the diet planner
+// can make the drinks instead of pulling them. Nothing is mixed here: that costs adventures, and the planner weighs it.
+void auto_stillCocktailBases()
+{
+	if(!get_property("hasCocktailKit").to_boolean() || !can_drink())
+	{
+		return;
+	}
+	skill garnishes = $skill[Advanced Cocktailcrafting];
+	int casts = min(garnishes.dailylimit - garnishes.timescast, my_mp() / max(1, mp_cost(garnishes)));
+	if(auto_have_skill(garnishes) && casts > 0)
+	{
+		use_skill(casts, garnishes);
+	}
+	// garnish : the base cocktail it finishes, and that base's booze and mixer
+	item[item, int] base;
+	base[$item[little paper umbrella], 0] = $item[gin and tonic];
+	base[$item[little paper umbrella], 1] = $item[whiskey bittersweet];
+	base[$item[magical ice cubes], 0] = $item[tequila sunset];
+	base[$item[magical ice cubes], 1] = $item[parisian cathouse];
+	base[$item[coconut shell], 0] = $item[vodka gibson];
+	foreach garnish in $items[little paper umbrella, magical ice cubes, coconut shell]
+	{
+		int want = item_amount(garnish);
+		foreach i, cocktail in base[garnish]
+		{
+			want -= item_amount(cocktail);
+		}
+		foreach i, cocktail in base[garnish]
+		{
+			int[item] parts = get_ingredients(cocktail);
+			int planned = 999;	//sets of parts already held count as made
+			foreach part in parts
+			{
+				planned = min(planned, item_amount(part));
+			}
+			want -= planned;
+			while(want > 0 && stills_available() >= 2)
+			{
+				boolean made = true;
+				foreach part in parts
+				{
+					made = made && auto_stillMake(part, planned + 1);
+				}
+				if(!made)
+				{
+					break;
+				}
+				auto_log_info("Distilled the makings of a " + cocktail + " to finish with a " + garnish + ".", "blue");
+				planned += 1;
+				want -= 1;
+			}
+		}
+	}
+}
+
 void auto_stillTonicWater()
 {
-	if(!stillReachable() || stills_available() == 0 || can_interact() || item_amount($item[tonic water]) > 0
-		|| !isGeneralStoreAvailable())
+	if(!stillReachable() || stills_available() == 0 || can_interact())
+	{
+		return;
+	}
+	auto_stillCocktailBases();
+	if(stills_available() == 0 || item_amount($item[tonic water]) > 0 || !isGeneralStoreAvailable())
 	{
 		return;
 	}
