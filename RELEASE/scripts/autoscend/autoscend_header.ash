@@ -1699,6 +1699,7 @@ boolean auto_familiarEquipPullExplained = false;	// auto_familiarEquipPull has s
 boolean auto_breakfastCounterVisit();
 item still_targetToOrigin(item target);
 boolean auto_stillMake(item target, int qty);
+void auto_summonIngredient(skill sk, boolean useful);
 void auto_summonGarnishes();
 void auto_stillCocktailBases();
 void auto_stillTonicWater();

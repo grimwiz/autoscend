@@ -2340,21 +2340,29 @@ boolean auto_stillMake(item target, int qty)
 // two pulled sidecars less the two pulls, which the diet planner prices at the gear pull they'd displace (1-2 turns
 // each, auto_pullCostAdventures). So with a cocktailcrafting kit, summon the garnishes and distil the pair for each
 // one; the planner then weighs making the drinks against pulling them. Uses left over make tonic water.
-// The day's garnishes from Advanced Cocktailcrafting (4 a cast with Superhuman Cocktailcrafting). The count resets on
-// ascending as well as at rollover, but the routine summons in the post-adventure script wait for 50-90 spare MP, so
-// runs 101 and 102 never cast it on day 1. Cast it once there's a cocktailcrafting kit to use the garnishes with.
-void auto_summonGarnishes()
+// The day's cooking and mixing ingredients: garnishes (Advanced Cocktailcrafting, 4 a cast with Superhuman
+// Cocktailcrafting), dry noodles (Pastamastery) and reagents (Advanced Saucecrafting). Their counts reset on ascending
+// as well as at rollover, but the routine summons in the post-adventure script wait for 50-90 spare MP, so runs 101 and
+// 102 cast none of them on day 1. Cast each once there's the kit or oven to use what it makes, from MP above the
+// combat reserve.
+void auto_summonIngredient(skill sk, boolean useful)
 {
-	skill garnishes = $skill[Advanced Cocktailcrafting];
-	if(!get_property("hasCocktailKit").to_boolean() || !can_drink() || !auto_have_skill(garnishes) || !auto_is_valid(garnishes))
+	if(!useful || !auto_have_skill(sk) || !auto_is_valid(sk))
 	{
 		return;
 	}
-	int casts = min(garnishes.dailylimit - garnishes.timescast, my_mp() / max(1, mp_cost(garnishes)));
+	int casts = min(sk.dailylimit - sk.timescast, (my_mp() - auto_combatMpNeeded()) / max(1, mp_cost(sk)));
 	if(casts > 0)
 	{
-		use_skill(casts, garnishes);
+		use_skill(casts, sk);
 	}
+}
+
+void auto_summonGarnishes()
+{
+	auto_summonIngredient($skill[Advanced Cocktailcrafting], get_property("hasCocktailKit").to_boolean() && can_drink());
+	auto_summonIngredient($skill[Pastamastery], get_property("auto_haveoven").to_boolean() && can_eat());
+	auto_summonIngredient($skill[Advanced Saucecrafting], get_property("auto_haveoven").to_boolean());
 }
 
 void auto_stillCocktailBases()
