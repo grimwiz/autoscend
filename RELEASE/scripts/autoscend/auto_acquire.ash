@@ -1222,13 +1222,15 @@ void auto_levelUpPull()
 	{
 		return;
 	}
-	set_property("auto_levelUpPullDone", key);
 	int reserve = get_property("auto_levelUpPullReserve") == "" ? 5 : get_property("auto_levelUpPullReserve").to_int();
 	string statement = get_property("auto_maximize_current");
 	if(pulls_remaining() <= reserve || statement == "")
 	{
+		// not marked done: a level reached late in the day, with the pulls down to the reserve, gets its pull once the
+		// next day's pulls arrive (run 102 reached level 8 with 3 left; runs 100-101 lost levels 8 and 10 the same way)
 		return;
 	}
+	set_property("auto_levelUpPullDone", key);
 	// The maximizer scores each suggestion as a gain over what is worn in that slot right now, so first wear the best
 	// owned gear in every slot. Otherwise a leftover from the last zone is the yardstick: run 100's level 11 check
 	// found a giant artisanal rice peeler (worn for spell damage) in the weapon slot and scored Pigsticker of Violence
