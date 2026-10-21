@@ -2022,6 +2022,7 @@ boolean doTasks()
 	// saved Meat that run 102's day 1 spent on a gnome skill and Doc Galaktik's tonics instead.
 	ovenHandle();
 	cocktailKitHandle();
+	auto_summonGarnishes();	// resets on ascending too: day 1 gets its garnishes once the kit is here
 	awol_buySkills();
 	awol_useStuff();
 	aosol_unCurse();

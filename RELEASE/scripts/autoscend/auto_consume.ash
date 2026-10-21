@@ -2340,17 +2340,28 @@ boolean auto_stillMake(item target, int qty)
 // two pulled sidecars less the two pulls, which the diet planner prices at the gear pull they'd displace (1-2 turns
 // each, auto_pullCostAdventures). So with a cocktailcrafting kit, summon the garnishes and distil the pair for each
 // one; the planner then weighs making the drinks against pulling them. Uses left over make tonic water.
+// The day's garnishes from Advanced Cocktailcrafting (4 a cast with Superhuman Cocktailcrafting). The count resets on
+// ascending as well as at rollover, but the routine summons in the post-adventure script wait for 50-90 spare MP, so
+// runs 101 and 102 never cast it on day 1. Cast it once there's a cocktailcrafting kit to use the garnishes with.
+void auto_summonGarnishes()
+{
+	skill garnishes = $skill[Advanced Cocktailcrafting];
+	if(!get_property("hasCocktailKit").to_boolean() || !can_drink() || !auto_have_skill(garnishes) || !auto_is_valid(garnishes))
+	{
+		return;
+	}
+	int casts = min(garnishes.dailylimit - garnishes.timescast, my_mp() / max(1, mp_cost(garnishes)));
+	if(casts > 0)
+	{
+		use_skill(casts, garnishes);
+	}
+}
+
 void auto_stillCocktailBases()
 {
 	if(!get_property("hasCocktailKit").to_boolean() || !can_drink())
 	{
 		return;
-	}
-	skill garnishes = $skill[Advanced Cocktailcrafting];
-	int casts = min(garnishes.dailylimit - garnishes.timescast, my_mp() / max(1, mp_cost(garnishes)));
-	if(auto_have_skill(garnishes) && casts > 0)
-	{
-		use_skill(casts, garnishes);
 	}
 	// garnish : the base cocktail it finishes, and that base's booze and mixer
 	item[item, int] base;
