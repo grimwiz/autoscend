@@ -2336,13 +2336,13 @@ boolean auto_stillMake(item target, int qty)
 // The Advanced Cocktailcrafting drinks (gimlet, Divine, tangarita, prussian cathouse, vodka stratocaster) give 14-18
 // adventures for 4 drunkenness, the same per drunkenness as the half-size sidecars run 102's day 1 pulled seven of. Each
 // is a still-improved booze and mixer mixed together, plus a garnish that the Advanced Cocktailcrafting skill summons
-// daily. But each full drink takes two mixes at an adventure each: 14-18 less 2 for 4 drunkenness against about 17
-// from two pulled sidecars, while a pull is worth about half a turn (auto_pullValue against auto_turnValue). So only
-// with free crafts for both mixes, and a cocktailcrafting kit, summon the garnishes and distil the pair for each one;
-// the diet planner then weighs making the drinks against pulling them. Otherwise the still makes tonic water.
+// daily. Each full drink takes two mixes at an adventure each: 14-18 less 2 for 4 drunkenness, against about 17 from
+// two pulled sidecars less the two pulls, which the diet planner prices at the gear pull they'd displace (1-2 turns
+// each, auto_pullCostAdventures). So with a cocktailcrafting kit, summon the garnishes and distil the pair for each
+// one; the planner then weighs making the drinks against pulling them. Uses left over make tonic water.
 void auto_stillCocktailBases()
 {
-	if(!get_property("hasCocktailKit").to_boolean() || !can_drink() || freeCrafts() < 2)
+	if(!get_property("hasCocktailKit").to_boolean() || !can_drink())
 	{
 		return;
 	}
@@ -2626,6 +2626,15 @@ float auto_pullCostAdventures(item it)
 {
 	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
 	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	// A pull spent on food or drink is one the gear pulls don't get, and the least gear pull taken is
+	// auto_pullMinScorePerLevel points a level, each worth auto_scorePointMeat over the rest of the run: about 0.9
+	// turns at level 3 and 1.9 at level 8. Run 102's day 1 pulled 1-drunkenness sidecars at 0.5 turns a pull while
+	// its level 8 gear pull went without.
+	if(get_property("auto_pullValue") == "")
+	{
+		float perLevel = get_property("auto_pullMinScorePerLevel") == "" ? 2.0 : get_property("auto_pullMinScorePerLevel").to_float();
+		pullValue = max(pullValue, perLevel * my_level() * auto_scorePointMeat());
+	}
 	float premium = get_property("auto_pullAdvPremium") == "" ? 2.0 : get_property("auto_pullAdvPremium").to_float();
 	float price = storage_amount(it) > 0 ? 0.0 : max(0, auto_mall_price(it));
 	float scarcity = 0.0;
