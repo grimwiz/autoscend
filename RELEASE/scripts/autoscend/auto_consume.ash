@@ -2336,16 +2336,13 @@ boolean auto_stillMake(item target, int qty)
 // The Advanced Cocktailcrafting drinks (gimlet, Divine, tangarita, prussian cathouse, vodka stratocaster) give 14-18
 // adventures for 4 drunkenness, the same per drunkenness as the half-size sidecars run 102's day 1 pulled seven of. Each
 // is a still-improved booze and mixer mixed together, plus a garnish that the Advanced Cocktailcrafting skill summons
-// daily. Each full drink takes two mixes at an adventure each: 14-18 less 2 for 4 drunkenness, against about 17 from
-// two pulled sidecars that spend two pulls. That's worth it while a pull is worth more than 1.5 turns
-// (auto_pullValueMeat: about 2.5 with a 5,000-Meat item in Hagnk's), or with free crafts for both mixes. Then, with a
-// cocktailcrafting kit, summon the garnishes and distil the pair for each one; the diet planner weighs making the
-// drinks against pulling them. Otherwise the still makes tonic water.
+// daily. But each full drink takes two mixes at an adventure each: 14-18 less 2 for 4 drunkenness against about 17
+// from two pulled sidecars, while a pull is worth about half a turn (auto_pullValue against auto_turnValue). So only
+// with free crafts for both mixes, and a cocktailcrafting kit, summon the garnishes and distil the pair for each one;
+// the diet planner then weighs making the drinks against pulling them. Otherwise the still makes tonic water.
 void auto_stillCocktailBases()
 {
-	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
-	if(!get_property("hasCocktailKit").to_boolean() || !can_drink()
-		|| (freeCrafts() < 2 && 2.0 * auto_pullValueMeat() <= 3.0 * turnValue))
+	if(!get_property("hasCocktailKit").to_boolean() || !can_drink() || freeCrafts() < 2)
 	{
 		return;
 	}
@@ -2628,7 +2625,7 @@ int auto_getConsumablePriceLimit()
 float auto_pullCostAdventures(item it)
 {
 	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
-	float pullValue = auto_pullValueMeat();
+	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
 	float premium = get_property("auto_pullAdvPremium") == "" ? 2.0 : get_property("auto_pullAdvPremium").to_float();
 	float price = storage_amount(it) > 0 ? 0.0 : max(0, auto_mall_price(it));
 	float scarcity = 0.0;
