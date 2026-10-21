@@ -2336,11 +2336,13 @@ boolean auto_stillMake(item target, int qty)
 // The Advanced Cocktailcrafting drinks (gimlet, Divine, tangarita, prussian cathouse, vodka stratocaster) give 14-18
 // adventures for 4 drunkenness, the same per drunkenness as the half-size sidecars run 102's day 1 pulled seven of. Each
 // is a still-improved booze and mixer mixed together, plus a garnish that the Advanced Cocktailcrafting skill summons
-// daily. So with a cocktailcrafting kit, summon the garnishes and distill the pair for each one, and the diet planner
-// can make the drinks instead of pulling them. Nothing is mixed here: that costs adventures, and the planner weighs it.
+// daily. But each full drink takes two mixes at an adventure each: 14-18 less 2 for 4 drunkenness against about 17
+// from two pulled sidecars, while a pull is worth about half a turn (auto_pullValue against auto_turnValue). So only
+// with free crafts for both mixes, and a cocktailcrafting kit, summon the garnishes and distil the pair for each one;
+// the diet planner then weighs making the drinks against pulling them. Otherwise the still makes tonic water.
 void auto_stillCocktailBases()
 {
-	if(!get_property("hasCocktailKit").to_boolean() || !can_drink())
+	if(!get_property("hasCocktailKit").to_boolean() || !can_drink() || freeCrafts() < 2)
 	{
 		return;
 	}
