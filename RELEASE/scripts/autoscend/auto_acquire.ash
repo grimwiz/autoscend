@@ -844,24 +844,40 @@ boolean pull_meat(int target)
 	return my_meat() >= target;
 }
 
-// Low on meat in Ronin: pull an unblemished pearl and autosell it, one pull for 11,037 Meat (pulling Meat itself
-// takes a pull per 1,000). Below auto_pearlMeatBelow Meat (default 2000); auto_pearlForMeat = false turns it off.
-// Only ever pulls a pearl already in Hagnk's, never buys one.
+// Low on meat in Ronin: pull something from Hagnk's that autosells for a lot and sell it. One pull of an unblemished
+// pearl gives 11,037 Meat; pulling Meat itself takes a pull per 1,000. Other runs leave such items in Hagnk's too: the
+// Island War boss drops a solid gold bowling ball (frat side) or an Iron Beta of Industry (hippy side), 5,000 each, and
+// a giant pearl autosells for 12,000. Standard allows one pull of each item a day, so having several kinds lets more
+// than one go per day: run 102's day 1 pulled its pearl at the start and was down to 590 Meat by turn 17.
+// Below auto_pearlMeatBelow Meat (default 2000), takes the stored item with the highest autosell price of at least
+// auto_pullForMeatMin (default 4000), skipping quest items and anything the mall values at over five times its
+// autosell price (a collectible is worth keeping). auto_pearlForMeat = false turns it off. Never buys anything.
 boolean auto_pearlForMeat()
 {
-	item pearl = $item[unblemished pearl];
 	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
 	if(get_property("auto_pearlForMeat") == "false" || in_hardcore() || can_interact() || my_meat() >= below
-		|| pulls_remaining() == 0 || storage_amount(pearl) == 0 || !auto_is_valid(pearl))
+		|| pulls_remaining() == 0)
 	{
 		return false;
 	}
-	if(!pullXWhenHaveY(pearl, 1, item_amount(pearl) + equipped_amount(pearl)) || item_amount(pearl) == 0)
+	int minSell = get_property("auto_pullForMeatMin") == "" ? 4000 : get_property("auto_pullForMeatMin").to_int();
+	item best = $item[none];
+	foreach it, n in get_storage()
+	{
+		int sell = autosell_price(it);
+		if(n <= 0 || sell < minSell || it.quest || (best != $item[none] && sell <= autosell_price(best))
+			|| (it.tradeable && historical_price(it) > 5 * sell) || !canPull(it))
+		{
+			continue;
+		}
+		best = it;
+	}
+	if(best == $item[none] || !pullXWhenHaveY(best, 1, item_amount(best) + equipped_amount(best)) || item_amount(best) == 0)
 	{
 		return false;
 	}
-	auto_log_info("Only " + my_meat() + " Meat: pulled an unblemished pearl to autosell for " + autosell_price(pearl) + ".", "blue");
-	return autosell(1, pearl);
+	auto_log_info("Only " + my_meat() + " Meat: pulled " + best + " to autosell for " + autosell_price(best) + ".", "blue");
+	return autosell(1, best);
 }
 
 // Fights left in the run, for valuing gear that pays a little every fight. A run is about auto_expectedRunTurns turns
