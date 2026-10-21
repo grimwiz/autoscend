@@ -1352,6 +1352,10 @@ boolean doBedtime()
 		return false;
 	}
 
+	//before the overdrink check, which returns until you've had your nightcap: run 101 (Accordion Thief) only reached
+	//the still on day 1, so days 2 and 3 lost their 10 uses each
+	bedtime_still();	//quickly use up all remaining uses of Nash Crosby's Still during bedtime
+
 	boolean done = (my_inebriety() > inebriety_limit() && !canChangeToStooper()) || (my_inebriety() > (inebriety_limit() + 1));
 	if(in_gnoob() || !can_drink() || out_of_blood)
 	{
@@ -1414,8 +1418,6 @@ boolean doBedtime()
 				auto_log_info("You may have a fax that you can use. Check it out!", "blue");
 			}
 		}
-		
-		bedtime_still();	//quickly use up all remaining uses of Nash Crosby's Still during bedtime
 
 		if(get_workshed() == $item[spinning wheel] && is_unrestricted($item[spinning wheel]) && !get_property("_spinningWheel").to_boolean())
 		{

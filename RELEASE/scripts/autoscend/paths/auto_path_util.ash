@@ -20,6 +20,17 @@ boolean auto_buySkills()  // This handles skill acquisition for general paths
 	{
 		visit_url("gnomes.php?action=trainskill&whichskill=12");
 	}
+	//The other gnome trainer skills are only taught here, and only under a gnome sign, so a run under one is the
+	//chance to learn any still missing and perm them at the next ascension. 5000 meat each, after Torso, from spare meat.
+	foreach sk in $skills[Gnomish Hardigness, Cosmic Ugnderstanding, Gnefarious Pickpocketing, Powers of Observatiogn]
+	{
+		if(gnomads_available() && !have_skill(sk) && auto_is_valid(sk) && (hasTorso() || !hasUsefulShirt())
+		   && my_meat() >= meatReserve() + 6000 && !in_aosol())
+		{
+			auto_log_info("Buying " + sk + " from the Gnomish Gnomads, to perm at the next ascension.", "blue");
+			visit_url("gnomes.php?action=trainskill&whichskill=" + sk.to_int());
+		}
+	}
 	if(!guild_store_available())
 	{
 		return false;
