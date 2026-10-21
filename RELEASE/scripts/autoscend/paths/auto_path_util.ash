@@ -20,10 +20,16 @@ boolean auto_buySkills()  // This handles skill acquisition for general paths
 	{
 		visit_url("gnomes.php?action=trainskill&whichskill=12");
 	}
-	//The other gnome trainer skills are only taught here, and only under a gnome sign, so a run under one is the
-	//chance to learn any still missing and perm them at the next ascension. 5000 meat each, after Torso, from spare meat.
+	//The other gnome trainer skills are only taught here, and only under a gnome sign. 5,000 Meat each, which in Ronin
+	//is a 5,000-Meat item pulled to autosell, so they're worth it only in a run that will perm them: list those in
+	//auto_gnomeSkillsToPerm (e.g. "Cosmic Ugnderstanding"). Bought after Torso, from spare Meat.
+	string toPerm = "," + get_property("auto_gnomeSkillsToPerm").to_lower_case().replace_string(", ", ",") + ",";
 	foreach sk in $skills[Gnomish Hardigness, Cosmic Ugnderstanding, Gnefarious Pickpocketing, Powers of Observatiogn]
 	{
+		if(!toPerm.contains_text("," + sk.to_string().to_lower_case() + ","))
+		{
+			continue;
+		}
 		if(gnomads_available() && !have_skill(sk) && auto_is_valid(sk) && (hasTorso() || !hasUsefulShirt())
 		   && my_meat() >= meatReserve() + 6000 && !in_aosol())
 		{

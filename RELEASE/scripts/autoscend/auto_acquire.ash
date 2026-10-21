@@ -423,7 +423,7 @@ boolean auto_craftInsteadOfPull(item it, int howMany)
 		return false;
 	}
 	int price = auto_mall_price(it);
-	int pullValue = get_property("auto_pullValue") == "" ? 1000 : get_property("auto_pullValue").to_int();
+	int pullValue = auto_pullValueMeat().to_int();
 	if(pulls > 0 && price <= pulls * pullValue)
 	{
 		return false;
@@ -853,14 +853,9 @@ boolean pull_meat(int target)
 // auto_pullForMeatMin (default 4000), skipping quest items and anything the mall values at over five times its
 // autosell price (a collectible is worth keeping), and always leaves auto_pullForMeatKeep (default 3) of each in
 // Hagnk's so a bug here can't sell a whole stock. auto_pearlForMeat = false turns it off. Never buys anything.
-boolean auto_pearlForMeat()
+// The stored item a pull could turn into the most Meat today (see above), or none.
+item auto_bestMeatPull()
 {
-	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
-	if(get_property("auto_pearlForMeat") == "false" || in_hardcore() || can_interact() || my_meat() >= below
-		|| pulls_remaining() == 0)
-	{
-		return false;
-	}
 	int minSell = get_property("auto_pullForMeatMin") == "" ? 4000 : get_property("auto_pullForMeatMin").to_int();
 	int keep = get_property("auto_pullForMeatKeep") == "" ? 3 : get_property("auto_pullForMeatKeep").to_int();
 	item best = $item[none];
@@ -874,6 +869,40 @@ boolean auto_pearlForMeat()
 		}
 		best = it;
 	}
+	return best;
+}
+
+// What a pull is worth in Meat. auto_pullValue if set; otherwise what the pull could fetch instead, the autosell price
+// of the best item auto_pearlForMeat could take (a solid gold bowling ball is 5,000, a pearl 11,037), and 1,000 when
+// Hagnk's has none. Spending Meat that has to be made back with such a pull spends the pull, so gear, food and drink
+// pulls are weighed against that, not against a flat 1,000: run 102's day 1 used all 20 pulls, three of them on
+// 1-drunkenness drinks.
+int auto_pullValueTurn = -1;
+float auto_pullValueCache;
+float auto_pullValueMeat()
+{
+	if(get_property("auto_pullValue") != "")
+	{
+		return get_property("auto_pullValue").to_float();
+	}
+	if(auto_pullValueTurn != my_turncount())
+	{
+		item best = can_interact() ? $item[none] : auto_bestMeatPull();
+		auto_pullValueCache = best == $item[none] ? 1000.0 : max(1000, autosell_price(best)).to_float();
+		auto_pullValueTurn = my_turncount();
+	}
+	return auto_pullValueCache;
+}
+
+boolean auto_pearlForMeat()
+{
+	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
+	if(get_property("auto_pearlForMeat") == "false" || in_hardcore() || can_interact() || my_meat() >= below
+		|| pulls_remaining() == 0)
+	{
+		return false;
+	}
+	item best = auto_bestMeatPull();
 	if(best == $item[none] || !pullXWhenHaveY(best, 1, item_amount(best) + equipped_amount(best)) || item_amount(best) == 0)
 	{
 		return false;
@@ -907,7 +936,7 @@ float auto_pullMinScore()
 	{
 		return get_property("auto_levelUpPullMinScore").to_float();
 	}
-	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	float pullValue = auto_pullValueMeat();
 	float pointMeat = auto_scorePointMeat();
 	return pointMeat <= 0.0 ? 999999.0 : pullValue / pointMeat;
 }
@@ -1299,7 +1328,7 @@ void auto_levelUpPull()
 	}
 	// Gear that has to be made from parts in Hagnk's competes for the level's pick on Meat net of its pulls and crafting
 	// turns (a pair of Loathing halves costs two pulls), against the best single pull's net.
-	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
+	float pullValue = auto_pullValueMeat();
 	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
 	float pointMeat = auto_scorePointMeat();
 	float singleNet = 0.0;

@@ -1603,6 +1603,8 @@ boolean auto_hermit(int amt, item it);
 boolean acquireHermitItem(item it);
 boolean pull_meat(int target);
 int handlePulls(int day);
+item auto_bestMeatPull();
+float auto_pullValueMeat();
 boolean auto_pearlForMeat();
 int auto_combatMpNeeded();
 float auto_fightsLeft();

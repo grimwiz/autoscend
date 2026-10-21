@@ -4956,10 +4956,13 @@ boolean auto_setMCDToCap()
 // against ~22 for a powerlevelling turn. But with MP held near the combat reserve they were rarely affordable (run 100:
 // 7 Ur-Kel's and 1 Drescher's in 93 turns, MP ~23 before adventures). Before ML is maxed for an adventure, get the MP
 // for each one that's missing and still fits under the zone's ML cap. Below level 13 only (Instant Karma);
-// auto_mlBuffMP = false turns it off.
+// auto_mlBuffMP = false turns it off. Only from spare Meat: below the reserve plus auto_pearlMeatBelow plus 1,000,
+// buying the MP would just be made back by pulling something to autosell, and a pull is worth more than the stats
+// (run 102's day 1 spent 840 MP, about 4,600 Meat, on these two and used all its pulls).
 void auto_mlBuffMP(int cap)
 {
-	if(my_level() >= 13 || get_property("auto_mlBuffMP") == "false")
+	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
+	if(my_level() >= 13 || get_property("auto_mlBuffMP") == "false" || my_meat() < meatReserve() + below + 1000)
 	{
 		return;
 	}
