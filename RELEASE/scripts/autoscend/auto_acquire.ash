@@ -851,7 +851,8 @@ boolean pull_meat(int target)
 // than one go per day: run 102's day 1 pulled its pearl at the start and was down to 590 Meat by turn 17.
 // Below auto_pearlMeatBelow Meat (default 2000), takes the stored item with the highest autosell price of at least
 // auto_pullForMeatMin (default 4000), skipping quest items and anything the mall values at over five times its
-// autosell price (a collectible is worth keeping). auto_pearlForMeat = false turns it off. Never buys anything.
+// autosell price (a collectible is worth keeping), and always leaves auto_pullForMeatKeep (default 3) of each in
+// Hagnk's so a bug here can't sell a whole stock. auto_pearlForMeat = false turns it off. Never buys anything.
 boolean auto_pearlForMeat()
 {
 	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
@@ -861,11 +862,12 @@ boolean auto_pearlForMeat()
 		return false;
 	}
 	int minSell = get_property("auto_pullForMeatMin") == "" ? 4000 : get_property("auto_pullForMeatMin").to_int();
+	int keep = get_property("auto_pullForMeatKeep") == "" ? 3 : get_property("auto_pullForMeatKeep").to_int();
 	item best = $item[none];
 	foreach it, n in get_storage()
 	{
 		int sell = autosell_price(it);
-		if(n <= 0 || sell < minSell || it.quest || (best != $item[none] && sell <= autosell_price(best))
+		if(n <= keep || sell < minSell || it.quest || (best != $item[none] && sell <= autosell_price(best))
 			|| (it.tradeable && historical_price(it) > 5 * sell) || !canPull(it))
 		{
 			continue;
