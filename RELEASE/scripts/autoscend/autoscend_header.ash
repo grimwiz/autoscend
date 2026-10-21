@@ -1698,6 +1698,7 @@ boolean[item] auto_chewFailed;	// spleen items that would not chew this start: a
 boolean auto_familiarEquipPullExplained = false;	// auto_familiarEquipPull has said, this start, why it is waiting
 boolean auto_breakfastCounterVisit();
 item still_targetToOrigin(item target);
+void auto_stillTonicWater();
 boolean stillReachable();
 boolean distill(item target);
 boolean prepare_food_xp_multi();

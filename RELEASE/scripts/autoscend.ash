@@ -2016,6 +2016,7 @@ boolean doTasks()
 	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear
 	auto_familiarEquipPull();	// once a day: a better familiar item from Hagnk's, if beating what's worn pays for the pull
 	auto_buySkills();		// formerly picky_buyskills() now moved here
+	auto_stillTonicWater();	// MP for a quarter of what Doc Galaktik charges, rather than leaving the still for bedtime
 	awol_buySkills();
 	awol_useStuff();
 	aosol_unCurse();

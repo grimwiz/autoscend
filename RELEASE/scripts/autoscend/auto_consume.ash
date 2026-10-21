@@ -2310,6 +2310,39 @@ boolean stillReachable()
 	return guild_store_available() && $classes[Accordion Thief, Disco Bandit] contains my_class();
 }
 
+// Tonic water restores 40 MP for a soda water (66 Meat) and a still use; Doc Galaktik's tonic restores 10 for 85-90.
+// Run 102's day 1 bought 60 Doc Galaktik's tonics (about 5,100 Meat) while the still sat unused until bedtime, so once
+// the still is reachable make tonic water whenever none is held, from Meat above the reserve. Uses that bedtime wants
+// for improved booze from bottles already held are left for it.
+void auto_stillTonicWater()
+{
+	if(!stillReachable() || stills_available() == 0 || can_interact() || item_amount($item[tonic water]) > 0
+		|| !isGeneralStoreAvailable())
+	{
+		return;
+	}
+	int keep = 0;
+	foreach it in $items[bottle of Calcutta Emerald, bottle of Lieutenant Freeman, bottle of Jorge Sinsonte, bottle of Definit, bottle of Domesticated Turkey, boxed champagne]
+	{
+		if(item_amount(it) == 0 && item_amount(still_targetToOrigin(it)) > 0)
+		{
+			keep += 1;
+		}
+	}
+	int price = max(1, npc_price($item[soda water]));
+	int make = min(stills_available() - keep, (my_meat() - meatReserve()) / price);
+	if(make <= 0 || !auto_buyUpTo(make, $item[soda water]))
+	{
+		return;
+	}
+	int made = 0;
+	while(made < make && item_amount($item[soda water]) > 0 && distill($item[tonic water]))
+	{
+		made += 1;
+	}
+	auto_log_info("Made " + made + " tonic water in Nash Crosby's Still for MP (40 each, against 10 from a Doc Galaktik's tonic).", "blue");
+}
+
 boolean distill(item target)
 {
 	//use Nash Crosby's Still to create target
