@@ -1408,11 +1408,9 @@ void auto_nonCombatPull(location place)
 	}
 }
 
-// Day 2 prep. Day 1 is short of Meat and pulls; by day 2 there is some leeway, so set up the tools that let autoscend
-// make things rather than pull them: a tenderizing hammer for smithing (the Nemesis quest needs one later anyway, and
-// Hagnk's usually has one, so it is pulled, never bought here), an oven for cooking and a cocktailcrafting kit for
-// mixing (General Store, about 1,000 Meat each). With them, smithed gear, cooked food and mixed drinks count among
-// what can be made.
+// Day 2 prep. Day 1 is short of pulls, so the tenderizing hammer for smithing waits for day 2 (the Nemesis quest needs
+// one later anyway, and Hagnk's usually has one, so it is pulled, never bought here). The oven and cocktailcrafting kit
+// are bought from day 1 by doTasks once Meat allows; they're checked here too.
 void auto_day2Prep()
 {
 	item hammer = $item[tenderizing hammer];

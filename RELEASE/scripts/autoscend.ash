@@ -2017,6 +2017,11 @@ boolean doTasks()
 	auto_familiarEquipPull();	// once a day: a better familiar item from Hagnk's, if beating what's worn pays for the pull
 	auto_buySkills();		// formerly picky_buyskills() now moved here
 	auto_stillTonicWater();	// MP for a quarter of what Doc Galaktik charges, rather than leaving the still for bedtime
+	// The oven and cocktailcrafting kit as soon as there's 1,000 Meat to spare beyond each, day 1 included: cooked food
+	// and mixed drinks then compete with pulled ones, which now cost the gear pull they displace. Waiting for day 2
+	// saved Meat that run 102's day 1 spent on a gnome skill and Doc Galaktik's tonics instead.
+	ovenHandle();
+	cocktailKitHandle();
 	awol_buySkills();
 	awol_useStuff();
 	aosol_unCurse();
