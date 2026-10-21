@@ -962,7 +962,8 @@ void auto_familiarEquipPull()
 	float runnerUpGain = -999999.0;
 	foreach it, n in get_storage()
 	{
-		if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(fam) == it) || !auto_is_valid(it))
+		if(to_slot(it) != $slot[familiar] || !(boolean_modifier(it, "Generic") || familiar_equipment(fam) == it) || !auto_is_valid(it)
+			|| pulledToday(it))
 		{
 			continue;
 		}
@@ -1251,7 +1252,10 @@ void auto_levelUpPull()
 	{
 		foreach i, entry in maximize(statement, 0, 0, 2, "equip")
 		{
-			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || entry.score <= minScore)
+			// one pull of each item a day: run 102 pulled a crepe paper polka charm at level 1, the maximizer offered a
+			// second for another accessory slot at level 2, KoLmafia refused it, and the failed command ended the day
+			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || entry.score <= minScore
+				|| pulledToday(entry.item))
 			{
 				continue;
 			}
@@ -1364,7 +1368,8 @@ void auto_nonCombatPull(location place)
 			{
 				break;
 			}
-			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || numeric_modifier(entry.item, "Combat Rate") >= 0)
+			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || numeric_modifier(entry.item, "Combat Rate") >= 0
+				|| pulledToday(entry.item))
 			{
 				continue;
 			}
