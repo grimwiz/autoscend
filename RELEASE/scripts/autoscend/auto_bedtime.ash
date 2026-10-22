@@ -1358,7 +1358,7 @@ boolean doBedtime()
 	bedtime_still();	//quickly use up all remaining uses of Nash Crosby's Still during bedtime
 
 	boolean done = (my_inebriety() > inebriety_limit() && !canChangeToStooper()) || (my_inebriety() > (inebriety_limit() + 1));
-	if(in_gnoob() || !can_drink() || out_of_blood)
+	if(in_gnoob() || !can_drink() || out_of_blood || in_gyou())
 	{
 		if((my_adventures() <= 2) || (internalQuestStatus("questL13Final") >= 14))
 		{
