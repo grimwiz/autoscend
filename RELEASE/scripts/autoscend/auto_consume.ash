@@ -1156,8 +1156,9 @@ boolean loadConsumables(string _type, ConsumeAction[int] actions)
 			boolean value_allowed = (historical_price(it) < auto_getConsumablePriceLimit()) ||
 									($items[blueberry muffin, bran muffin, chocolate chip muffin] contains it && item_amount(it) > 0 && //muffins are expensive but renewable
 									my_path() != $path[Grey You]); //Grey You should not even get to here if ever supported but it consumes the tin so blocked just in case
-									
-			if(!value_allowed)	continue;
+			// The price limit caps what's bought, from a store or into Hagnk's to pull. Food and drink already held, or
+			// made from what's held, cost what went into them, not their mall price: with the limit at 200, run 102 never
+			// considered the cocktails it had the makings for (gimlet 979, vodka stratocaster 900) and pulled a whiskey.
 			if((it == $item[astral pilsner] || it == $item[Cold One] || it == $item[astral hot dog]) && my_level() < 11) continue;
 			if((it == $item[Spaghetti Breakfast]) && (my_level() < 11 || my_fullness() > 0 || get_property("_spaghettiBreakfastEaten").to_boolean())) continue;
 			if(it == $item[Pizza of Legend] && get_property("pizzaOfLegendEaten").to_boolean()) continue;
@@ -1176,9 +1177,9 @@ boolean loadConsumables(string _type, ConsumeAction[int] actions)
 			// don't add speakeasy drinks, because they can't actually be bought as items
 			if (npc_price(it) > 0 && !isSpeakeasyDrink(it))
 			{
-				buyables[it] = min(howmany, my_meat() / npc_price(it));
+				if(value_allowed)	buyables[it] = min(howmany, my_meat() / npc_price(it));
 			}
-			else if (buy_price($coinmaster[hermit], it) > 0)
+			else if (buy_price($coinmaster[hermit], it) > 0 && value_allowed)
 			{
 				buyables[it] += min(howmany, my_meat() / 500);
 			}
@@ -1206,7 +1207,7 @@ boolean loadConsumables(string _type, ConsumeAction[int] actions)
 				}
 			}
 			// speakeasy drinks are not available as items and will cause a crash here if not excluded.
-			if (!isSpeakeasyDrink(it) && canPull(it))
+			if (!isSpeakeasyDrink(it) && canPull(it) && (value_allowed || storage_amount(it) > 0))
 			{
 				if(!can_interact())
 				{
