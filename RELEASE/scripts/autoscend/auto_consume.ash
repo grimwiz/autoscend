@@ -2310,6 +2310,19 @@ boolean stillReachable()
 	return guild_store_available() && $classes[Accordion Thief, Disco Bandit] contains my_class();
 }
 
+// KoLmafia reads the still's uses from the still page ("with N bright") once a login and records 0 when the page
+// doesn't say. Run 102's day 2 logged in to 0 with all 10 uses unspent, so no tonic water, cocktail bases or bedtime
+// distilling that day. When it says 0, look at the still once a day to recount.
+int auto_stillsAvailable()
+{
+	if(stills_available() == 0 && stillReachable() && !get_property("_auto_stillRecounted").to_boolean())
+	{
+		set_property("_auto_stillRecounted", true);
+		visit_url("shop.php?whichshop=still");
+	}
+	return stills_available();
+}
+
 // Tonic water restores 40 MP for a soda water (66 Meat) and a still use; Doc Galaktik's tonic restores 10 for 85-90.
 // Run 102's day 1 bought 60 Doc Galaktik's tonics (about 5,100 Meat) while the still sat unused until bedtime, so once
 // the still is reachable make tonic water whenever none is held, from Meat above the reserve. Uses that bedtime wants
@@ -2415,7 +2428,7 @@ void auto_stillCocktailBases()
 
 void auto_stillTonicWater()
 {
-	if(!stillReachable() || stills_available() == 0 || can_interact())
+	if(!stillReachable() || auto_stillsAvailable() == 0 || can_interact())
 	{
 		return;
 	}

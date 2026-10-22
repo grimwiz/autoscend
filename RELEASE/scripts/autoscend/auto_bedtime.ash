@@ -5,6 +5,7 @@ void bedtime_still()
 	{
 		return;		//we can not reach the still
 	}
+	auto_stillsAvailable();
 	while(stills_available() > 0)	//spend remaining still uses
 	{
 		item target = $item[none];

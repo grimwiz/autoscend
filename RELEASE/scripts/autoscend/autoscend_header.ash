@@ -1704,6 +1704,7 @@ void auto_summonGarnishes();
 void auto_stillCocktailBases();
 void auto_stillTonicWater();
 boolean stillReachable();
+int auto_stillsAvailable();
 boolean distill(item target);
 boolean prepare_food_xp_multi();
 void consumeStuff();
