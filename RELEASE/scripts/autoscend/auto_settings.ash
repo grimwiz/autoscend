@@ -337,7 +337,7 @@ void auto_settingsDefaults()
 	//set default values for settings which have not yet been configured
 	defaultConfig("auto_delayTimer", "1");
 	defaultConfig("auto_abooclover", "true");		//Are we considering using a clover at A-Boo Peak?
-	defaultConfig("auto_consumablePriceLimit", "12000");	// Max mall price for consumables to eat/drink (also won't exceed mafia's autobuy limit).
+	defaultConfig("auto_consumablePriceLimit", "12000");	// Max mall price for consumables bought to eat/drink, in Meat or as a share of Meat on hand ("15%"); never above mafia's autobuy limit.
 	defaultConfig("auto_paranoia", "-1");
 	defaultConfig("auto_inv_paranoia", "false");
 	defaultConfig("auto_save_adv_override", "-1");

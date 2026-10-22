@@ -2639,10 +2639,18 @@ boolean isSpleenConsumable(item it)
 	return it.spleen != 0;
 }
 
+// auto_consumablePriceLimit is a Meat amount, or a share of the Meat on hand such as "15%", which grows with the
+// wallet: a fixed 200 set when Meat was short kept run 102 to the cheapest pulled drinks with 30,000 Meat to spend.
 int auto_getConsumablePriceLimit()
 {
 	int mafia_max = get_property("autoBuyPriceLimit").to_int();
-	int autoscend_max = get_property("auto_consumablePriceLimit").to_int();
+	string setting = get_property("auto_consumablePriceLimit").trim();
+	if(setting.index_of("%") > 0)
+	{
+		float share = setting.substring(0, setting.index_of("%")).to_float() / 100.0;
+		return min(max(1, to_int(my_meat() * share)), mafia_max);
+	}
+	int autoscend_max = setting.to_int();
 	if (autoscend_max < 1) {
 		return mafia_max;
 	}
