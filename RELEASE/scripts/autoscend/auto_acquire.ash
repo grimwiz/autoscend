@@ -1363,6 +1363,30 @@ void auto_levelUpPull()
 // ones that lower combat rate, keeping auto_levelUpPullReserve. A turn saved is worth more than a pull, and the
 // maximizer's -combat weight (200 a point against 1 for ML) already trades ML away for it. auto_nonCombatPulls =
 // false turns it off.
+// How many -combat items for a slot are already held or worn, against how many that slot can wear (3 accessories,
+// 1 of anything else). Pulled gear persists for the run, so a -combat pull keeps paying in later zones, but only while
+// it can be worn alongside the rest: a fourth -combat accessory just displaces one of the three.
+boolean auto_nonCombatSlotFull(slot s)
+{
+	boolean acc = $slots[acc1, acc2, acc3] contains s;
+	int held = 0;
+	foreach it, n in get_inventory()
+	{
+		if(numeric_modifier(it, "Combat Rate") < 0 && can_equip(it) && (acc ? to_slot(it) == $slot[acc1] : to_slot(it) == s))
+		{
+			held += n;
+		}
+	}
+	foreach sl in (acc ? $slots[acc1, acc2, acc3] : $slots[hat, back, shirt, weapon, off-hand, pants])
+	{
+		if((acc || sl == s) && numeric_modifier(equipped_item(sl), "Combat Rate") < 0)
+		{
+			held += 1;
+		}
+	}
+	return held >= (acc ? 3 : 1);
+}
+
 void auto_nonCombatPull(location place)
 {
 	if(get_property("auto_nonCombatPulls") == "false" || in_hardcore() || can_interact())
@@ -1393,7 +1417,7 @@ void auto_nonCombatPull(location place)
 				break;
 			}
 			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || numeric_modifier(entry.item, "Combat Rate") >= 0
-				|| pulledToday(entry.item))
+				|| pulledToday(entry.item) || auto_nonCombatSlotFull(to_slot(entry.item)))
 			{
 				continue;
 			}
