@@ -1587,6 +1587,8 @@ boolean auto_pullWetStew();
 boolean auto_craftInsteadOfPull(item it, int howMany);
 void auto_emptyStorageWhenFree();
 void auto_offerLoathingItems();
+void auto_bartenderHandle();
+void auto_replaceBartender();
 int[item] auto_loathingHalves(item it);
 boolean auto_smithLoathing(item it);
 int[item] auto_craftParts(item it);

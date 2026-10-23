@@ -262,6 +262,66 @@ void auto_emptyStorageWhenFree()
 		cli_execute("pull " + my_storage_meat() + " meat");
 	}
 	auto_offerLoathingItems();
+	auto_replaceBartender();
+}
+
+// A bartender-in-the-box makes fancy mixing free. It lasts about 80-100 uses and is removed at ascension, so a run
+// uses one up. Without it each Advanced Cocktailcrafting drink costs its mixing turns and loses to pulled drinks (run
+// 102); with it a gimlet nets its 14-18 adventures for 4 drunkenness, so the made cocktails replace drink pulls and
+// those pulls go to gear. Once the cocktailcrafting kit is in, install one, pulled from Hagnk's if need be. The
+// clockwork one lasts longer, but that's wasted when ascension removes it, so it's only the fallback.
+void auto_bartenderHandle()
+{
+	if(in_hardcore() || can_interact() || get_property("hasBartender").to_boolean() || !get_property("hasCocktailKit").to_boolean() || !can_drink())
+	{
+		return;
+	}
+	foreach box in $items[bartender-in-the-box, clockwork bartender-in-the-box]
+	{
+		if(!auto_is_valid(box))
+		{
+			continue;
+		}
+		if(available_amount(box) == 0)
+		{
+			if(storage_amount(box) == 0 || !canPull(box))
+			{
+				continue;
+			}
+			auto_log_info("Pulling a " + box + " so mixing drinks costs no turns.", "blue");
+			if(!pullXWhenHaveY(box, 1, 0))
+			{
+				continue;
+			}
+		}
+		if(use(1, box))
+		{
+			set_property("auto_bartenderUsed", my_ascensions());
+		}
+		return;
+	}
+}
+
+// After the King is freed, make a bartender-in-the-box to replace the one this run used, so the next ascension finds
+// one in Hagnk's (what's held at ascension goes there). KoLmafia makes it from the parts held (nothing-in-the-box,
+// bartender skull) or buys what's missing.
+void auto_replaceBartender()
+{
+	if(!can_interact() || get_property("auto_bartenderUsed").to_int() != my_ascensions()
+		|| get_property("auto_bartenderReplaced").to_int() == my_ascensions())
+	{
+		return;
+	}
+	set_property("auto_bartenderReplaced", my_ascensions());
+	item box = $item[bartender-in-the-box];
+	if(retrieve_item(item_amount(box) + 1, box))
+	{
+		auto_log_info("Made a bartender-in-the-box for the next ascension, replacing the one this run used.", "blue");
+	}
+	else
+	{
+		auto_log_warning("Couldn't make a bartender-in-the-box to replace the one this run used.", "red");
+	}
 }
 
 // The Clothing of Loathing is smithed from one Hatred piece (Yog-Urt) and one Violence piece (Shub-Jigguwatt), each

@@ -2023,6 +2023,7 @@ boolean doTasks()
 	// saved Meat that run 102's day 1 spent on a gnome skill and Doc Galaktik's tonics instead.
 	ovenHandle();
 	cocktailKitHandle();
+	auto_bartenderHandle();	// once the kit is in: free fancy mixing, so made cocktails can replace drink pulls
 	auto_summonGarnishes();	// garnishes, noodles, reagents: reset on ascending too, so day 1 gets them once the kit and oven are here
 	awol_buySkills();
 	awol_useStuff();
