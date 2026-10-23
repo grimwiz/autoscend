@@ -2376,6 +2376,43 @@ void auto_summonGarnishes()
 	auto_summonIngredient($skill[Advanced Saucecrafting], get_property("auto_haveoven").to_boolean());
 }
 
+// The still-made parts held for a base cocktail that a garnish on hand would finish. Tonic water is both a gin and tonic
+// part and an MP restore: on run 102's days 2 and 3 the restore drank the tonic water as soon as it was made and the
+// still made it again, five times by mid-morning, until the uses ran out before the drinks were mixed.
+int auto_cocktailPartsReserved(item part)
+{
+	if(!get_property("hasCocktailKit").to_boolean() || !can_drink())
+	{
+		return 0;
+	}
+	item[item] garnishFor = {
+		$item[gin and tonic]: $item[little paper umbrella],
+		$item[whiskey bittersweet]: $item[little paper umbrella],
+		$item[tequila sunset]: $item[magical ice cubes],
+		$item[parisian cathouse]: $item[magical ice cubes],
+		$item[vodka gibson]: $item[coconut shell]
+	};
+	int reserved = 0;
+	foreach cocktail, garnish in garnishFor
+	{
+		int[item] parts = get_ingredients(cocktail);
+		if(!(parts contains part))
+		{
+			continue;
+		}
+		int sets = item_amount(garnish);
+		foreach other in parts
+		{
+			if(other != part)
+			{
+				sets = min(sets, item_amount(other));
+			}
+		}
+		reserved += sets;
+	}
+	return min(reserved, item_amount(part));
+}
+
 void auto_stillCocktailBases()
 {
 	if(!get_property("hasCocktailKit").to_boolean() || !can_drink())
@@ -2431,7 +2468,7 @@ void auto_stillTonicWater()
 		return;
 	}
 	auto_stillCocktailBases();
-	if(stills_available() == 0 || item_amount($item[tonic water]) > 0 || !isGeneralStoreAvailable())
+	if(stills_available() == 0 || item_amount($item[tonic water]) > auto_cocktailPartsReserved($item[tonic water]) || !isGeneralStoreAvailable())
 	{
 		return;
 	}

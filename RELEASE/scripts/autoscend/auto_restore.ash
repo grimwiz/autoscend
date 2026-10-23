@@ -678,7 +678,7 @@ __RestorationOptimization __calculate_objective_values(int hp_goal, int mp_goal,
 		}
 		else if(metadata.type == "item")
 		{
-			available = item_amount(to_item(metadata.name)) + get_value("total_buyable") + get_value("total_creatable");
+			available = item_amount(to_item(metadata.name)) - auto_cocktailPartsReserved(to_item(metadata.name)) + get_value("total_buyable") + get_value("total_creatable");
 		}
 		else if(metadata.type == "skill")
 		{
@@ -947,7 +947,7 @@ __RestorationOptimization __calculate_objective_values(int hp_goal, int mp_goal,
 			boolean coinmaster_buyable = i.seller != $coinmaster[none] && is_accessible(i.seller) && get_property("autoSatisfyWithCoinmasters").to_boolean();
 			
 			boolean can_buy = meat_reserve < my_meat() && (npc_meat_buyable || mall_buyable);
-			return (available_amount(i) > 0 || can_buy || coinmaster_buyable);
+			return (available_amount(i) - auto_cocktailPartsReserved(i) > 0 || can_buy || coinmaster_buyable);	//not the parts kept for a cocktail
 		}
 		if(metadata.type == "skill")
 		{
