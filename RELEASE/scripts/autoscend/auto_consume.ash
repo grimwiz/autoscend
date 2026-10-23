@@ -2645,6 +2645,18 @@ void consumeStuff()
 
 		if(auto_autoConsumeOne(bestAction))
 		{
+			// Ode to Booze costs 50 MP for 10 turns, and the turns not drunk wear off while adventuring. Run 102's day 3
+			// cast it six times for one or two small drinks each, about 300 MP. While it lasts, drink whatever the planner
+			// would drink next if it fits inside what's left, rather than recasting for it later.
+			while(bestAction.organ == AUTO_ORGAN_LIVER && have_effect($effect[Ode to Booze]) > 0 && inebriety_left() > 0)
+			{
+				ConsumeAction next = auto_findBestConsumeAction("drink");
+				if(next.it == $item[none] || next.size > have_effect($effect[Ode to Booze]) || next.size > inebriety_left()
+					|| !auto_autoConsumeOne(next))
+				{
+					break;
+				}
+			}
 			return;
 		}
 	}
