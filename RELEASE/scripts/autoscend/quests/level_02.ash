@@ -25,6 +25,11 @@ void spookyForestChoiceHandler(int choice)
 				run_choice(1); // go to The Road Less Traveled (#503)
 			}
 		}
+		else if(item_amount($item[spices]) == 0)
+		{
+			// the island war comes here for spices for the gremlins
+			run_choice(3); // go to Through Thicket and Thinnet (#506)
+		}
 		else
 		{
 			auto_log_warning("In Arboreal Respite for some reason but we don't need a mosquito larva or to unlock the hidden temple!");
