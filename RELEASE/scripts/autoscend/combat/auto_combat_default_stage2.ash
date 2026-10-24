@@ -159,7 +159,14 @@ string auto_combatDefaultStage2(int round, monster enemy, string text)
 	}
 
 	//club em back in time to free kill the enemy but don't get any items
-	if(wantToClubEmBackInTime(my_location(), enemy))
+	//wait a round if stage 4 still has a flyer to hand out, or the arena sidequest never finishes on free kills
+	item flyer = $item[Rock Band Flyers];
+	if(auto_warSide() == "hippy")
+	{
+		flyer = $item[Jam Band Flyers];
+	}
+	boolean flyerFirst = canUse(flyer) && get_property("flyeredML").to_int() < 10000 && !get_property("auto_ignoreFlyer").to_boolean() && canSurvive(3.0) && my_location() != $location[The Battlefield (Frat Uniform)] && my_location() != $location[The Battlefield (Hippy Uniform)];
+	if(wantToClubEmBackInTime(my_location(), enemy) && !flyerFirst)
 	{
 		if(canUse($skill[Club 'Em Back in Time]))
 		{
