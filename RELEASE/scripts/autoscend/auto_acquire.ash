@@ -431,7 +431,14 @@ void auto_offerLoathingItems()
 		}
 		if(!user_confirm("You have " + halves + ". Make " + it + " from them (this uses both up)? Will default to 'No' in 60 seconds.", 60000, false))
 		{
-			auto_log_info("Not making " + it + " (from " + halves + ").", "blue");
+			string cmd = "ash visit_url(\"craft.php?action=craft&mode=smith&pwd&qty=1";
+			string ab = "a";
+			foreach half in auto_loathingHalves(it)
+			{
+				cmd += "&" + ab + "=" + half.to_int();
+				ab = "b";
+			}
+			auto_log_info("Not making " + it + " (from " + halves + "). To make it later, with a tenderizing hammer in inventory: " + cmd + "\")", "blue");
 		}
 		else if(auto_smithLoathing(it))
 		{
