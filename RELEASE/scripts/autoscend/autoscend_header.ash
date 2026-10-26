@@ -1571,6 +1571,7 @@ boolean tomb_already_found();
 boolean LX_acquireEpicWeapon();
 boolean LX_NemesisQuest();
 boolean auto_nemesisInRun();
+float auto_nemesisPullShare(item it);
 void houseUpgrade();
 
 ########################################################################################################
