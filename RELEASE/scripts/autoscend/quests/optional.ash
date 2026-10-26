@@ -1116,35 +1116,6 @@ boolean auto_nemesisInRun()
 	return get_property("auto_nemesisInRun").to_boolean() && isGuildClass();
 }
 
-static item[class] nemesisCaveItems = {
-	$class[Seal Clubber] : $item[Scalp of Gorgolok],
-	$class[Turtle Tamer] : $item[Elder Turtle Shell],
-	$class[Pastamancer] : $item[Colander of Em-er'il],
-	$class[Sauceror] : $item[Ancient Saucehelm],
-	$class[Disco Bandit] : $item[Disco 'Fro Pick],
-	$class[Accordion Thief] : $item[El Sombrero De Lopez]
-}; // what beating your Nemesis in the cave gives
-
-// The share of a pull's worth left for gear the in-run nemesis quest hands over anyway: it only counts for the turns
-// before that, against gear that lasts the run. In runs 100-103 the Legendary Epic Weapon and the cave piece both
-// came at turns 267-289 and the King was freed at 811-832; run 103 pulled an Ancient Saucehelm at turn 63 (level 6)
-// and the cave gave another at turn 277, as run 102 did with a Disco 'Fro Pick (turn 41, then 288).
-float auto_nemesisPullShare(item it)
-{
-	if(!auto_nemesisInRun() || (it != epicWeapons[my_class()] && it != nemesisCaveItems[my_class()]))
-	{
-		return 1.0;
-	}
-	int step = it == epicWeapons[my_class()] ? 8 : 16;
-	if(internalQuestStatus("questG04Nemesis") >= step)
-	{
-		return 1.0;
-	}
-	float arrives = 280.0;
-	float runEnds = 830.0;
-	return max(0.0, arrives - my_turncount()) / max(1.0, runEnds - my_turncount());
-}
-
 void nemesisVisitGuild()
 {
 	visit_url("guild.php?place=scg");

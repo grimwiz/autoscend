@@ -1345,9 +1345,7 @@ void auto_levelUpPull()
 		{
 			// one pull of each item a day: run 102 pulled a crepe paper polka charm at level 1, the maximizer offered a
 			// second for another accessory slot at level 2, KoLmafia refused it, and the failed command ended the day
-			// nemesis gear the in-run quest will hand over soon is worth a pull only until then
-			float score = entry.score * auto_nemesisPullShare(entry.item);
-			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || score <= minScore
+			if(!entry.command.contains_text("pull ") || entry.command.contains_text("buy") || entry.score <= minScore
 				|| pulledToday(entry.item))
 			{
 				continue;
@@ -1360,9 +1358,9 @@ void auto_levelUpPull()
 			{
 				continue;
 			}
-			if(score > slotBest[sl])
+			if(entry.score > slotBest[sl])
 			{
-				slotBest[sl] = score;
+				slotBest[sl] = entry.score;
 				slotCommand[sl] = entry.command;
 				slotWhat[sl] = entry.display;
 			}
