@@ -57,7 +57,14 @@ boolean auto_run_choice(int choice, string page)
 			run_choice(4); // skip
 			break;
 		case 108: // Aww, Craps (The Sleazy Back Alley)
-			run_choice(4); // skip
+			if(options contains 4)
+			{
+				run_choice(4); // more meat and moxie, when offered
+			}
+			else
+			{
+				run_choice(1); // moxie substats. There's no way out, and 2 and 3 can cost HP
+			}
 			break;
 		case 109: // Dumpster Diving (The Sleazy Back Alley)
 			if(options contains 4)
