@@ -57,13 +57,14 @@ boolean auto_run_choice(int choice, string page)
 			run_choice(4); // skip
 			break;
 		case 108: // Aww, Craps (The Sleazy Back Alley)
-			if(options contains 4)
+			// walking away is option 5: option 4 (more meat and moxie) is only sometimes on the page and keeps its number
+			if(options contains 5)
 			{
-				run_choice(4); // more meat and moxie, when offered
+				run_choice(5); // skip
 			}
 			else
 			{
-				run_choice(1); // moxie substats. There's no way out, and 2 and 3 can cost HP
+				run_choice(1); // moxie substats; 2 and 3 can cost HP
 			}
 			break;
 		case 109: // Dumpster Diving (The Sleazy Back Alley)
