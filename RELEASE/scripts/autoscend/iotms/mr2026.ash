@@ -61,11 +61,27 @@ boolean wantToClubEmBackInTime(location loc, monster enemy)
 
 	if(can_interact()) return false;
 
-	// a monster we can kill anyway only saves the turn, which any fight would: keep the uses for fights we are
-	// losing (stage 5) until the last adventures of the day, then use them up so the free turns aren't lost at rollover
-	if(my_adventures() > 20) return false;
+	// a monster we can't hit: what the reserve below is kept for
+	if($monsters[fleaman] contains enemy) return true;
+
+	// a monster we can kill anyway only saves the turn, which any fight would: keep enough uses for the fleamen still
+	// to come, and hand those out too in the last adventures of the day so the free turns aren't lost at rollover
+	if(auto_clubEmBackInTimesRemaining() <= auto_clubEmBackInTimeReserve() && my_adventures() > 20) return false;
 
 	return auto_wantToFreeKillWithNoDrops(loc, enemy);
+}
+
+int auto_clubEmBackInTimeReserve()
+{
+	// Club 'Em Back in Time uses to keep for fleamen, which jump out of the way even of attacks that can't miss.
+	// In this year's runs about 28% of 8-bit fights were in Vanya's Castle and 40% of those were fleamen: one fleaman
+	// per 9 fights, at about 300 points a fight. Once the digital key's points are done nothing needs keeping.
+	if(!need8BitPoints())
+	{
+		return 0;
+	}
+	int fightsLeft = ceil((10000 - get_property("8BitScore").to_int()) / 300.0);
+	return min(auto_clubEmBackInTimesRemaining(), ceil(fightsLeft / 9.0));
 }
 
 boolean auto_haveHeartstone()

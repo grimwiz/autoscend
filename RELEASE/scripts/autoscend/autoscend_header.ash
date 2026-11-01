@@ -705,6 +705,7 @@ int auto_clubEmBackInTimesRemaining();
 int auto_clubEmAcrossTheBattlefieldsRemaining();
 int auto_clubEmIntoNextWeeksRemaining();
 boolean wantToClubEmBackInTime(location loc, monster enemy);
+int auto_clubEmBackInTimeReserve();
 boolean auto_haveEternityCodpiece();
 boolean auto_isInEternityCodpiece(item it);
 boolean auto_haveHeartstone();
