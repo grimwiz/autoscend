@@ -1354,8 +1354,13 @@ void auto_damageObserve(int round)
 	{
 		return;	// a Stuffed Mortar Shell landed in that round as well
 	}
+	int dealt = max(0, before - monster_hp());
+	if(key == "attack" && dealt == 0)
+	{
+		combat_status_add(combat_status_check("attacknohit") ? "attacknohit2" : "attacknohit");
+	}
 	string[string] seen = auto_damageSeenMap();
-	string vals = max(0, before - monster_hp()).to_string();
+	string vals = dealt.to_string();
 	int kept = 1;
 	foreach i, v in split_string(seen[key], ",")
 	{
@@ -1391,6 +1396,13 @@ void auto_damageNoteAction(string action)
 	set_property("_auto_combatTracker_lastMonsterHP", monster_hp());
 }
 
+// Two weapon attacks this fight did no damage: the monster is dodging them. A fleaman jumps out of the way even when
+// attacks can't miss, and then buffed_hit_stat() is Integer.MAX_VALUE, so the usual "can we hit it" checks pass.
+boolean auto_weaponAttacksWhiffing()
+{
+	return combat_status_check("attacknohit2");
+}
+
 // The second-lowest of the recent results: ignores criticals and allows for an occasional miss. -1 until 4 are seen.
 int auto_damageEstimate(string key)
 {
@@ -1422,7 +1434,7 @@ string auto_cheapestKill(monster enemy, int costToBeat)
 	{
 		return "";
 	}
-	if(enemy.physical_resistance < 30 && auto_damageEstimate("attack") >= hp)
+	if(enemy.physical_resistance < 30 && !auto_weaponAttacksWhiffing() && auto_damageEstimate("attack") >= hp)
 	{
 		return "attack with weapon";
 	}

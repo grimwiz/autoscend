@@ -9,6 +9,7 @@ string auto_combatHandler(int round, monster enemy, string text);
 void auto_damageObserve(int round);
 void auto_damageNoteAction(string action);
 int auto_damageEstimate(string key);
+boolean auto_weaponAttacksWhiffing();
 string auto_cheapestKill(monster enemy, int costToBeat);		
 
 #####################################################

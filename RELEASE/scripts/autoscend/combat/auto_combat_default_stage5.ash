@@ -841,6 +841,33 @@ string auto_combatDefaultStage5(int round, monster enemy, string text)
 		
 	} // class attack selection
 
+	// weapon attacks keep doing nothing (see auto_weaponAttacksWhiffing): cast a damage spell instead
+	if(auto_weaponAttacksWhiffing() && (attackMinor == "attack with weapon" || attackMajor == "attack with weapon"))
+	{
+		foreach sk in $skills[Saucestorm, Saucegeyser, Cannelloni Cannon, Wave of Sauce, Stream of Sauce, Spaghetti Spear]
+		{
+			if(!canUse(sk, false) || my_mp() < mp_cost(sk))
+			{
+				continue;
+			}
+			if($skills[Stream of Sauce, Wave of Sauce] contains sk && monster_element(enemy) == $element[hot])
+			{
+				continue;
+			}
+			if(attackMinor == "attack with weapon")
+			{
+				attackMinor = useSkill(sk, false);
+				costMinor = mp_cost(sk);
+			}
+			if(attackMajor == "attack with weapon")
+			{
+				attackMajor = useSkill(sk, false);
+				costMajor = mp_cost(sk);
+			}
+			break;
+		}
+	}
+
 	if(((my_hp() * 10)/3) < my_maxhp())
 	{
 		if(canUse($skill[Thunderstrike]) && (monster_level_adjustment() <= 150))
