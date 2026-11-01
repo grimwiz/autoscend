@@ -841,6 +841,13 @@ string auto_combatDefaultStage5(int round, monster enemy, string text)
 		
 	} // class attack selection
 
+	// a fight we are losing (attacks not landing, or under 30% HP): what wantToClubEmBackInTime saves the uses for
+	if((auto_weaponAttacksWhiffing() || ((my_hp() * 10)/3) < my_maxhp()) && canUse($skill[Club 'Em Back in Time]) && instakillable(enemy) && !isFreeMonster(enemy, my_location()))
+	{
+		handleTracker(enemy, $skill[Club 'Em Back in Time], "auto_instakill");
+		return useSkill($skill[Club 'Em Back in Time]);
+	}
+
 	// weapon attacks keep doing nothing (see auto_weaponAttacksWhiffing): cast a damage spell instead
 	if(auto_weaponAttacksWhiffing() && (attackMinor == "attack with weapon" || attackMajor == "attack with weapon"))
 	{

@@ -60,7 +60,11 @@ boolean wantToClubEmBackInTime(location loc, monster enemy)
 	if (isFreeMonster(enemy, loc)) { return false; } // don't use free kills against inherently free fights
 
 	if(can_interact()) return false;
-	
+
+	// a monster we can kill anyway only saves the turn, which any fight would: keep the uses for fights we are
+	// losing (stage 5) until the last adventures of the day, then use them up so the free turns aren't lost at rollover
+	if(my_adventures() > 20) return false;
+
 	return auto_wantToFreeKillWithNoDrops(loc, enemy);
 }
 
