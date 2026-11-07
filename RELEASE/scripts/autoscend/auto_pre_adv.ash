@@ -967,7 +967,16 @@ boolean auto_pre_adventure()
 		else
 		{
 			// note: maximizer will allow to go above the max value, ML just won't contribute to the total score after the max value
-			addToMaximize("ml " + get_property("auto_MLSafetyLimit").to_int() + "max");
+			// The weight grows with how far ML without gear falls short of the limit (auto_mlGearWeight). The level-up
+			// pulls score gear with this same statement, so they follow it too.
+			int limit = get_property("auto_MLSafetyLimit").to_int();
+			float weight = auto_mlGearWeight(limit);
+			if(weight.to_string() != get_property("_auto_mlGearWeight"))
+			{
+				auto_log_info("ML gear weight " + weight + ": ML without gear is " + auto_mlGapWithoutGear(limit) + " short of the limit " + limit + ".", "blue");
+				set_property("_auto_mlGearWeight", weight);
+			}
+			addToMaximize(weight + "ml " + limit + "max");
 		}
 	}
 	

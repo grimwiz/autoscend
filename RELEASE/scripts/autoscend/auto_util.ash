@@ -6277,6 +6277,29 @@ int auto_safeML(location place)
 	return auto_safeML(place, limits);
 }
 
+// The maximizer weight for ML gear, from how far the ML that doesn't come from gear (effects such as Ur-Kel's and
+// Drescher's, the MCD, passives) falls short of the limit: the bigger the gap, the more a point of ML from gear is
+// worth against other stats. Runs 105-106 averaged ML 36-40 against limits of 51-111 with weight 1, so +ML gear lost
+// to other stats. One per 10 ML short, between 1 and auto_MLGearWeightMax (5). Once the rest reaches the limit ML from
+// gear earns nothing anyway (the term's max), so the gear and pulls go to other stats.
+int auto_mlGapWithoutGear(int limit)
+{
+	int fromGear = 0;
+	foreach sl in $slots[hat, back, shirt, weapon, off-hand, pants, acc1, acc2, acc3, familiar]
+	{
+		fromGear += numeric_modifier(equipped_item(sl), "Monster Level").to_int();
+	}
+	return limit - (monster_level_adjustment() - fromGear);
+}
+
+float auto_mlGearWeight(int limit)
+{
+	int gap = auto_mlGapWithoutGear(limit);
+	float most = get_property("auto_MLGearWeightMax") == "" ? 5.0 : get_property("auto_MLGearWeightMax").to_float();
+	float weight = max(1.0, min(most, gap / 10.0));
+	return round(weight * 10) / 10.0;
+}
+
 // What a point of max HP and of damage reduction is worth in ML, while the ML worn is pressing against a limit set by
 // survival (run 101, an Accordion Thief: 243 max HP at level 9 held ML at 61, against 82 for run 100's Turtle Tamer
 // with 406). auto_safeML allows (auto_mlSurvivalShare of max HP - a hit) / 1.25 of ML, so a point of max HP lifts it

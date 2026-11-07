@@ -2269,6 +2269,8 @@ int auto_convertDesiredML(int DML);
 boolean auto_setMCDToCap();
 float auto_mlSurvivalShare();
 int auto_safeML(location place);
+int auto_mlGapWithoutGear(int limit);
+float auto_mlGearWeight(int limit);
 int auto_safeML(location place, int[string] limits);
 float[string] auto_mlUnlockPerPoint(location place);
 string auto_addStatementWeight(string statement, string keyword, float extra);
