@@ -1620,6 +1620,7 @@ float auto_fightsLeft();
 float auto_scorePointMeat();
 float auto_pullMinScore();
 void auto_familiarEquipPull();
+void auto_logShoppingList(string statement);
 void auto_levelUpPull();
 boolean LX_craftAcquireItems();
 

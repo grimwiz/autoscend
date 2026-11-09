@@ -1273,6 +1273,81 @@ boolean auto_makeStorageCraft(item it)
 	return equip(sl, it);
 }
 
+// The shopping list: gear you don't own that the maximizer would wear now if you had it, logged once per level to
+// data/autoscend_shopping_<name>.txt so it can be bought in aftercore and left in Hagnk's for the next run. Asked the
+// same way as the level-up pull (the best owned gear worn first, the same statement, Standard rules), but with the
+// mall allowed, so a slot's best suggestion that needs buying ("buy & pull", "buy") or making ("make") means nothing
+// you own or have in Hagnk's beats it. Each item keeps its best gain, what that gain is worth over the rest of the run
+// (auto_scorePointMeat), the mall price, how often it came up and where. auto_shoppingList = false turns it off.
+record auto_shopItem
+{
+	float score;
+	int meat;
+	int price;
+	string how;
+	string slot;
+	int seen;
+	string last;
+};
+
+void auto_logShoppingList(string statement)
+{
+	string key = my_ascensions() + ":" + my_level();
+	if(get_property("auto_shoppingList") == "false" || get_property("auto_shoppingListDone") == key || statement == "")
+	{
+		return;
+	}
+	set_property("auto_shoppingListDone", key);
+	string fname = "autoscend_shopping_" + my_name() + ".txt";
+	auto_shopItem[item] list;
+	file_to_map(fname, list);
+	maximize(statement, false);
+	string mallSetting = get_property("autoSatisfyWithMall");
+	set_property("autoSatisfyWithMall", "true");
+	string found = "";
+	try
+	{
+		foreach i, entry in maximize(statement, 0, 0, 2, "equip")
+		{
+			string cmd = entry.command;
+			if(entry.item == $item[none] || entry.score <= 0 || !(cmd.starts_with("buy") || cmd.starts_with("make")
+				|| cmd.starts_with("acquire")))
+			{
+				continue;
+			}
+			matcher m = create_matcher("equip (\\S+) ", cmd);
+			slot sl = m.find() ? m.group(1).to_slot() : $slot[none];
+			if(sl == $slot[none] || (sl == $slot[familiar] && my_familiar() == $familiar[none]))
+			{
+				continue;
+			}
+			item it = entry.item;
+			auto_shopItem rec = list[it];
+			rec.seen += 1;
+			rec.slot = sl.to_string();
+			rec.how = cmd.starts_with("make") ? "make" : (cmd.starts_with("buy using storage") ? "buy & pull" : "buy");
+			rec.price = mall_price(it);
+			rec.last = "run " + my_ascensions() + " level " + my_level() + ", " + my_location();
+			if(entry.score > rec.score)
+			{
+				rec.score = entry.score;
+				rec.meat = to_int(entry.score * auto_scorePointMeat());
+			}
+			list[it] = rec;
+			found += (found == "" ? "" : ", ") + it + " (" + sl + ", +" + to_int(entry.score) + ")";
+		}
+	}
+	finally
+	{
+		set_property("autoSatisfyWithMall", mallSetting);
+	}
+	if(found != "")
+	{
+		map_to_file(list, fname);
+		auto_log_info("Level " + my_level() + " shopping list (not owned, would be worn): " + found + ". See data/" + fname + ".", "blue");
+	}
+}
+
 // Once per level in Ronin: ask the maximizer, with Hagnk's included, whether pulling one piece of equipment would
 // improve the gear autoscend is currently after, and pull and wear the best one. Items pulled at level 1 are often
 // outgrown by level 7, so this keeps the gear current as the run goes. Keeps auto_levelUpPullReserve pulls (5) for
@@ -1284,6 +1359,7 @@ void auto_levelUpPull()
 	{
 		return;
 	}
+	auto_logShoppingList(get_property("auto_maximize_current"));	// once per level, even when the pulls are spent
 	string key = my_ascensions() + ":" + my_level();
 	if(get_property("auto_levelUpPullDone") == key)
 	{
