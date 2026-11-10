@@ -1279,6 +1279,9 @@ boolean auto_makeStorageCraft(item it)
 // mall allowed, so a slot's best suggestion that needs buying ("buy & pull", "buy") or making ("make") means nothing
 // you own or have in Hagnk's beats it. Each item keeps its best gain, what that gain is worth over the rest of the run
 // (auto_scorePointMeat), the mall price, how often it came up and where. auto_shoppingList = false turns it off.
+// It asks once per price cap in auto_shoppingListPrices (10000,100000,1000000), so each slot lists its best item at
+// each price: with no cap the maximizer skips the price check and every slot came back as an item listed for hundreds
+// of millions or not in the mall at all (run 106 level 12: Talisman of Baio 177M, tiny plastic Naughty Sorceress 500M).
 record auto_shopItem
 {
 	float score;
@@ -1299,19 +1302,37 @@ void auto_logShoppingList(string statement)
 	}
 	set_property("auto_shoppingListDone", key);
 	string fname = "autoscend_shopping_" + my_name() + ".txt";
+	string prices = get_property("auto_shoppingListPrices") == "" ? "10000,100000,1000000" : get_property("auto_shoppingListPrices");
+	int[int] caps;
+	int top = 0;
+	foreach i, cap in split_string(prices, ",")
+	{
+		caps[count(caps)] = cap.to_int();
+		top = max(top, cap.to_int());
+	}
+	auto_shopItem[item] saved;
 	auto_shopItem[item] list;
-	file_to_map(fname, list);
+	file_to_map(fname, saved);
+	foreach it, rec in saved
+	{
+		if(rec.how == "make" || (rec.price > 0 && rec.price <= top))	// drop entries from before the price caps
+		{
+			list[it] = rec;
+		}
+	}
 	maximize(statement, false);
 	string mallSetting = get_property("autoSatisfyWithMall");
 	set_property("autoSatisfyWithMall", "true");
 	string found = "";
+	boolean[item] logged;
 	try
 	{
-		foreach i, entry in maximize(statement, 0, 0, 2, "equip")
+		foreach c, cap in caps
+		foreach i, entry in maximize(statement, cap, 1, 2, "equip")
 		{
 			string cmd = entry.command;
-			if(entry.item == $item[none] || entry.score <= 0 || !(cmd.starts_with("buy") || cmd.starts_with("make")
-				|| cmd.starts_with("acquire")))
+			if(entry.item == $item[none] || entry.score <= 0 || logged contains entry.item
+				|| !(cmd.starts_with("buy") || cmd.starts_with("make") || cmd.starts_with("acquire")))
 			{
 				continue;
 			}
@@ -1334,16 +1355,21 @@ void auto_logShoppingList(string statement)
 				rec.meat = to_int(entry.score * auto_scorePointMeat());
 			}
 			list[it] = rec;
-			found += (found == "" ? "" : ", ") + it + " (" + sl + ", +" + to_int(entry.score) + ")";
+			logged[it] = true;
+			found += (found == "" ? "" : ", ") + it + " (" + sl + ", +" + to_int(entry.score)
+				+ (rec.how == "make" ? "" : ", " + rec.price + " meat") + ")";
 		}
 	}
 	finally
 	{
 		set_property("autoSatisfyWithMall", mallSetting);
 	}
-	if(found != "")
+	if(found != "" || count(list) != count(saved))
 	{
 		map_to_file(list, fname);
+	}
+	if(found != "")
+	{
 		auto_log_info("Level " + my_level() + " shopping list (not owned, would be worn): " + found + ". See data/" + fname + ".", "blue");
 	}
 }
