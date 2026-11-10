@@ -1146,9 +1146,10 @@ float auto_statementScore(string statement, item it)
 	return score;
 }
 
-// Gear that can be made from items in Hagnk's (and inventory): KoLmafia's maximizer offers what can be made from
-// inventory, and what can be pulled whole, but never "pull the parts, then make it". Only recipes KoLmafia can make
-// right now count (a tenderizing hammer for smithing, jewelry-making pliers for jewelry, and so on), one level deep.
+// Gear that can be made from items in Hagnk's and inventory: KoLmafia's maximizer wears only what is owned, and
+// offers what can be pulled whole, but never "pull the parts, then make it" (or makes anything when equipping).
+// Only recipes KoLmafia can make right now count (a tenderizing hammer for smithing, jewelry-making pliers for
+// jewelry, and so on), one level deep.
 // Returns the best one whose gain over what's worn in its slot pays for its pulls and crafting turns, with what it
 // is worth net in Meat; $item[none] if none does.
 item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, float turnValue, float pointMeat, float[item] netMeat, int[item] pullsNeeded)
@@ -1168,6 +1169,7 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 			continue;
 		}
 		int pulls = 0;
+		float used = 0.0;	// mall value of the inventory parts it uses up
 		boolean ok = true;
 		// the finished item already in Hagnk's is one pull and no crafting (run 101 made a Mark IV Steam-Hat from two
 		// pulls with one in Hagnk's)
@@ -1181,15 +1183,19 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 			foreach part, qty in parts
 			{
 				int missing = max(0, qty - item_amount(part));
-				if(missing > 0 && (storage_amount(part) < missing || !canPull(part)))
+				// never craft away a quest item in inventory
+				if((missing > 0 && (storage_amount(part) < missing || !canPull(part))) || (missing < qty && part.quest))
 				{
 					ok = false;
 				}
 				pulls += missing;
+				if(part.tradeable && missing < qty)
+				{
+					used += (qty - missing) * max(0, auto_mall_price(part));
+				}
 			}
 		}
-		// nothing to pull: the maximizer already offers it as "make"
-		if(!ok || pulls == 0 || pulls > pullsFree)
+		if(!ok || pulls > pullsFree)
 		{
 			continue;
 		}
@@ -1217,7 +1223,7 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 		float gain = auto_statementScore(statement, it) - worn;
 		// smithing a Loathing pair is a manual recipe KoLmafia can't time: count it as one adventure
 		int turns = whole ? 0 : (count(get_ingredients(it)) > 0 ? max(0, creatable_turns(it, 1, true)) : 1);
-		float net = gain * pointMeat - pulls * pullValue - turns * turnValue;
+		float net = gain * pointMeat - pulls * pullValue - turns * turnValue - used;
 		if(net > bestNet)
 		{
 			best = it;
@@ -1374,6 +1380,39 @@ void auto_logShoppingList(string statement)
 	}
 }
 
+// Gear that can be made from what is already in inventory, with no pulls. Nothing else makes it: the maximizer
+// only wears what is owned, and the level-up pull only looked at pulls. Run 107 carried the April Shower Thoughts
+// shield's daily globs of wet paper all of day 1 while every level's shopping list named a wet shower radio
+// (+25% Item Drop, one glob). Checked once a level and once a day, since some of it (the radio) is gone at rollover.
+void auto_makeOwnedGear(string statement)
+{
+	string key = my_ascensions() + ":" + my_daycount() + ":" + my_level();
+	if(statement == "" || get_property("auto_makeOwnedGearDone") == key)
+	{
+		return;
+	}
+	set_property("auto_makeOwnedGearDone", key);
+	maximize(statement, false);	// the best owned gear is the yardstick (see auto_levelUpPull)
+	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float[item] net;
+	int[item] pulls;
+	item it = auto_bestStorageCraft(statement, 0, 0.0, turnValue, auto_scorePointMeat(), net, pulls);
+	if(it == $item[none])
+	{
+		return;
+	}
+	string parts = "";
+	foreach part, qty in auto_craftParts(it)
+	{
+		parts += (parts == "" ? "" : " + ") + (qty > 1 ? qty + " " : "") + part;
+	}
+	auto_log_info("Level " + my_level() + ": making " + it + " from " + parts + " in inventory, worth about " + net[it].to_int() + " Meat net.", "blue");
+	if(!auto_makeStorageCraft(it))
+	{
+		auto_log_warning("Couldn't make " + it + ".", "red");
+	}
+}
+
 // Once per level in Ronin: ask the maximizer, with Hagnk's included, whether pulling one piece of equipment would
 // improve the gear autoscend is currently after, and pull and wear the best one. Items pulled at level 1 are often
 // outgrown by level 7, so this keeps the gear current as the run goes. Keeps auto_levelUpPullReserve pulls (5) for
@@ -1386,6 +1425,7 @@ void auto_levelUpPull()
 		return;
 	}
 	auto_logShoppingList(get_property("auto_maximize_current"));	// once per level, even when the pulls are spent
+	auto_makeOwnedGear(get_property("auto_maximize_current"));	// no pulls, so not held back by the reserve
 	string key = my_ascensions() + ":" + my_level();
 	if(get_property("auto_levelUpPullDone") == key)
 	{

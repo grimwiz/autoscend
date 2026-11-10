@@ -1600,6 +1600,7 @@ void auto_nonCombatPull(location place);
 float auto_statementScore(string statement, item it);
 item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, float turnValue, float pointMeat, float[item] netMeat, int[item] pullsNeeded);
 boolean auto_makeStorageCraft(item it);
+void auto_makeOwnedGear(string statement);
 int auto_pullPriceCap(item it);
 float auto_pullCostAdventures(item it);
 boolean pulverizeThing(item it);
