@@ -1394,22 +1394,27 @@ void auto_makeOwnedGear(string statement)
 	set_property("auto_makeOwnedGearDone", key);
 	maximize(statement, false);	// the best owned gear is the yardstick (see auto_levelUpPull)
 	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
-	float[item] net;
-	int[item] pulls;
-	item it = auto_bestStorageCraft(statement, 0, 0.0, turnValue, auto_scorePointMeat(), net, pulls);
-	if(it == $item[none])
+	// make the best, wear it, then look again (against the new gear) until nothing more pays
+	for(int n = 0; n < 10; n++)
 	{
-		return;
-	}
-	string parts = "";
-	foreach part, qty in auto_craftParts(it)
-	{
-		parts += (parts == "" ? "" : " + ") + (qty > 1 ? qty + " " : "") + part;
-	}
-	auto_log_info("Level " + my_level() + ": making " + it + " from " + parts + " in inventory, worth about " + net[it].to_int() + " Meat net.", "blue");
-	if(!auto_makeStorageCraft(it))
-	{
-		auto_log_warning("Couldn't make " + it + ".", "red");
+		float[item] net;
+		int[item] pulls;
+		item it = auto_bestStorageCraft(statement, 0, 0.0, turnValue, auto_scorePointMeat(), net, pulls);
+		if(it == $item[none])
+		{
+			return;
+		}
+		string parts = "";
+		foreach part, qty in auto_craftParts(it)
+		{
+			parts += (parts == "" ? "" : " + ") + (qty > 1 ? qty + " " : "") + part;
+		}
+		auto_log_info("Level " + my_level() + ": making " + it + " from " + parts + " in inventory, worth about " + net[it].to_int() + " Meat net.", "blue");
+		if(!auto_makeStorageCraft(it))
+		{
+			auto_log_warning("Couldn't make " + it + ".", "red");
+			return;
+		}
 	}
 }
 
