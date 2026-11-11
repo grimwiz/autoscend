@@ -1183,8 +1183,10 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 			foreach part, qty in parts
 			{
 				int missing = max(0, qty - item_amount(part));
-				// never craft away a quest item in inventory
-				if((missing > 0 && (storage_amount(part) < missing || !canPull(part))) || (missing < qty && part.quest))
+				// never craft away a quest item in inventory. One pull of each item a day: run 107's level 8 planned a
+				// snailmail hauberk from 8 pulls of snailmail bits, got 1, and couldn't make it
+				if((missing > 0 && (storage_amount(part) < missing || !canPull(part) || missing > 1 || pulledToday(part)))
+					|| (missing < qty && part.quest))
 				{
 					ok = false;
 				}
