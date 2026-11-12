@@ -310,8 +310,10 @@ boolean LX_unlockHauntedBilliardsRoom(boolean delayKitchen) {
 		int [element] resGoals;
 		resGoals[$element[hot]] = 9;
 		resGoals[$element[stench]] = 9;
-		// check to see if we can acquire sufficient hot and stench res for the kitchen
-		int [element] resPossible = provideResistances(resGoals, $location[The Haunted Kitchen], true, false, true);
+		// check to see if we can acquire sufficient hot and stench res for the kitchen, counting what the attempt below
+		// uses (spleen items too): run 107 checked without them from turn 20 and waited until turn 373, when a Synapse
+		// Blaster took it to 14/12, by which time 19 drunkenness made the Billiards Room take 46 turns
+		int [element] resPossible = provideResistances(resGoals, $location[The Haunted Kitchen], true, true, true);
 		delayKitchen = (resPossible[$element[hot]] < 9 || resPossible[$element[stench]] < 9);
 	}
 
