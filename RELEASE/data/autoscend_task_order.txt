@@ -775,14 +775,15 @@ default	57	L4_batCave
 default	58	L3_tavern
 # Basic fetch quest is the first thing the council demand of you. Is this 2002 or what?
 default	59	L2_mosquito
-# There's an extra task in KoE
+# Non-Standard Final Bosses
 default	60	LX_koeInvaderHandler
+default	61	LX_bugbearInvasionFinale
 # "win" the contests, navigate the maze, unlock the door, climb the tower, commit sorceresscide.
-default	61	L13_towerAscent
+default	62	L13_towerAscent
 # not powerlevelling but something that needs to be done if nothing else is available
-default	62	LX_lastChance
+default	63	LX_lastChance
 # release the hounds!
-default	63	auto_softBlockHandler
+default	64	auto_softBlockHandler
 # if all else fails, powerlevel like there's no tomorrow.
-default	64	LX_attemptPowerLevel
+default	65	LX_attemptPowerLevel
 
