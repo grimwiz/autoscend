@@ -2648,7 +2648,11 @@ void consumeStuff()
 			// Ode to Booze costs 50 MP for 10 turns, and the turns not drunk wear off while adventuring. Run 102's day 3
 			// cast it six times for one or two small drinks each, about 300 MP. While it lasts, drink whatever the planner
 			// would drink next if it fits inside what's left, rather than recasting for it later.
-			while(bestAction.organ == AUTO_ORGAN_LIVER && have_effect($effect[Ode to Booze]) > 0 && inebriety_left() > 0)
+			// Not while the Haunted Billiards Room is open and the library key not yet won: past 10 drunkenness each
+			// point costs 2 pool skill, so each drink waits until its adventures are needed. Entering at 6-10
+			// drunkenness, one drink at a time wins the key 7-24 turns sooner than a 4-drink batch.
+			boolean billiards = item_amount($item[Spookyraven billiards room key]) > 0 && !hasSpookyravenLibraryKey();
+			while(bestAction.organ == AUTO_ORGAN_LIVER && have_effect($effect[Ode to Booze]) > 0 && inebriety_left() > 0 && !billiards)
 			{
 				ConsumeAction next = auto_findBestConsumeAction("drink");
 				if(next.it == $item[none] || next.size > have_effect($effect[Ode to Booze]) || next.size > inebriety_left()
