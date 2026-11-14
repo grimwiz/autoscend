@@ -2318,6 +2318,10 @@ void auto_begin()
 		consumeStuff();
 	}
 
+	if(inAftercore())
+	{
+		auto_emptyStorageWhenFree();	// each part once per ascension; doTasks stops before it when overdrunk
+	}
 	if(doBedtime())
 	{
 		auto_log_info("Done for today (" + my_daycount() + "), beep boop");
