@@ -263,6 +263,7 @@ void auto_emptyStorageWhenFree()
 	}
 	auto_offerLoathingItems();
 	auto_replaceBartender();
+	auto_buyShoppingList();
 }
 
 // A bartender-in-the-box makes fancy mixing free. It lasts about 80-100 uses and is removed at ascension, so a run
@@ -1290,6 +1291,8 @@ boolean auto_makeStorageCraft(item it)
 // It asks once per price cap in auto_shoppingListPrices (10000,100000,1000000), so each slot lists its best item at
 // each price: with no cap the maximizer skips the price check and every slot came back as an item listed for hundreds
 // of millions or not in the mall at all (run 106 level 12: Talisman of Baio 177M, tiny plastic Naughty Sorceress 500M).
+// It is also asked once per zone (auto_zoneShoppingList), with the gear that zone wants, and once the King is freed the
+// list is bought (auto_buyShoppingList).
 record auto_shopItem
 {
 	float score;
@@ -1301,14 +1304,10 @@ record auto_shopItem
 	string last;
 };
 
-void auto_logShoppingList(string statement)
+// Adds the gear the maximizer would buy or make for statement to the shopping list. where says what asked
+// ("Level 12", a zone) in the log line.
+void auto_recordShoppingList(string statement, string where)
 {
-	string key = my_ascensions() + ":" + my_level();
-	if(get_property("auto_shoppingList") == "false" || get_property("auto_shoppingListDone") == key || statement == "")
-	{
-		return;
-	}
-	set_property("auto_shoppingListDone", key);
 	string fname = "autoscend_shopping_" + my_name() + ".txt";
 	string prices = get_property("auto_shoppingListPrices") == "" ? "10000,100000,1000000" : get_property("auto_shoppingListPrices");
 	int[int] caps;
@@ -1328,7 +1327,6 @@ void auto_logShoppingList(string statement)
 			list[it] = rec;
 		}
 	}
-	maximize(statement, false);
 	string mallSetting = get_property("autoSatisfyWithMall");
 	set_property("autoSatisfyWithMall", "true");
 	string found = "";
@@ -1378,7 +1376,91 @@ void auto_logShoppingList(string statement)
 	}
 	if(found != "")
 	{
-		auto_log_info("Level " + my_level() + " shopping list (not owned, would be worn): " + found + ". See data/" + fname + ".", "blue");
+		auto_log_info(where + " shopping list (not owned, would be worn): " + found + ". See data/" + fname + ".", "blue");
+	}
+}
+
+void auto_logShoppingList(string statement)
+{
+	string key = my_ascensions() + ":" + my_level();
+	if(get_property("auto_shoppingList") == "false" || get_property("auto_shoppingListDone") == key || statement == "")
+	{
+		return;
+	}
+	set_property("auto_shoppingListDone", key);
+	maximize(statement, false);	// the best owned gear worn first, so the list only has what beats it
+	auto_recordShoppingList(statement, "Level " + my_level());
+}
+
+// The level check sees whatever zone the level is reached in, so gear a zone wants (resistances for the Kitchen,
+// -combat for the Spooky Forest) only made the list when a level-up happened there. So each zone is asked too, once
+// per ascension, right after the pre-adventure maximizer has put on the best owned gear for it.
+void auto_zoneShoppingList(location place)
+{
+	if(get_property("auto_shoppingList") == "false" || in_hardcore() || can_interact() || place == $location[none])
+	{
+		return;
+	}
+	string[int] doneParts = split_string(get_property("auto_shoppingListZones"), ":");
+	string done = doneParts[0] == my_ascensions().to_string() && count(doneParts) > 1 ? doneParts[1] : "";
+	if(("," + done + ",").contains_text("," + place.to_int() + ","))
+	{
+		return;
+	}
+	set_property("auto_shoppingListZones", my_ascensions() + ":" + done + (done == "" ? "" : ",") + place.to_int());
+	auto_recordShoppingList(get_property("auto_maximize_current"), place.to_string());
+}
+
+// Once the King is freed, buy the shopping list, so the next ascension finds it in Hagnk's (what's held at ascension
+// goes there). An item is bought when none is owned anywhere (inventory, closet, Hagnk's, display case, store) and its
+// mall price is no more than what the list says it was worth over the rest of the run it came up in (the meat column)
+// or auto_shoppingListBuyMax (100000). Made items are left alone: they're made from what's to hand during the run (the
+// wet shower radio is gone at rollover). auto_shoppingListBuy = false turns it off.
+void auto_buyShoppingList()
+{
+	if(!can_interact() || get_property("auto_shoppingListBuy") == "false"
+		|| get_property("auto_shoppingListBought").to_int() == my_ascensions())
+	{
+		return;
+	}
+	set_property("auto_shoppingListBought", my_ascensions());
+	auto_shopItem[item] list;
+	file_to_map("autoscend_shopping_" + my_name() + ".txt", list);
+	int cap = get_property("auto_shoppingListBuyMax") == "" ? 100000 : get_property("auto_shoppingListBuyMax").to_int();
+	string bought = "";
+	string skipped = "";
+	int spent = 0;
+	foreach it, rec in list
+	{
+		if(rec.how == "make" || available_amount(it) + closet_amount(it) + storage_amount(it) + display_amount(it) + shop_amount(it) > 0)
+		{
+			continue;
+		}
+		int price = mall_price(it);
+		int limit = min(cap, rec.meat);
+		if(price <= 0 || price > limit)
+		{
+			skipped += (skipped == "" ? "" : ", ") + it + " (" + (price <= 0 ? "not in the mall" : price + " meat, worth " + rec.meat) + ")";
+			continue;
+		}
+		int before = my_meat();
+		if(buy(1, it, limit) > 0)
+		{
+			spent += before - my_meat();
+			bought += (bought == "" ? "" : ", ") + it + " (" + (before - my_meat()) + " meat)";
+		}
+		else
+		{
+			skipped += (skipped == "" ? "" : ", ") + it + " (couldn't buy it for " + limit + " or less)";
+		}
+	}
+	if(bought != "")
+	{
+		auto_log_info("Bought the shopping list for the next ascension: " + bought + ", " + spent + " meat in all.", "blue");
+	}
+	if(skipped != "")
+	{
+		auto_log_info("Shopping list items not bought: " + skipped + ".", "blue");
 	}
 }
 

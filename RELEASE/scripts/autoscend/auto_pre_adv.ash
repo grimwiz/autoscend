@@ -992,6 +992,7 @@ boolean auto_pre_adventure()
 	auto_ghost_prep(place);
 	equipMaximizedGear();
 	auto_nonCombatPull(place);	// once per zone: -combat gear from Hagnk's if this zone asks for a lower combat rate
+	auto_zoneShoppingList(place);	// once per zone: gear it wants that isn't owned goes on the shopping list
 	auto_handleRetrocape(); // has to be done after equipMaximizedGear otherwise the maximizer reconfigures it
 	auto_handleParka(); //same as retrocape above
 
