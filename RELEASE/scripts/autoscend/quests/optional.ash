@@ -600,7 +600,8 @@ boolean LX_galaktikSubQuest()
 	if(finishGalaktikSubQuest()) return true;	//always turn the quest in if possible
 	considerGalaktikSubQuest();					//if allowed will automatically enable the quest in some cases
 	
-	if(!get_property("auto_doGalaktik").to_boolean())
+	// on whenever Meat is below 500: its reward is cheaper restoring, which matters most when Meat is short
+	if(!get_property("auto_doGalaktik").to_boolean() && my_meat() >= 500)
 	{
 		return false;		//by default we do not want to do this quest.
 	}
@@ -1373,4 +1374,185 @@ void houseUpgrade()
 	{
 		use(1, $item[Frobozz Real-Estate Company Instant House (TM)]);
 	}
+}
+
+// Side quests instead of powerlevelling. A character with no scaling zone, Chateau or free fights (a first life, any
+// bare account) has nothing to powerlevel with, and LX_attemptPowerLevel used to give up and end the day with turns
+// left. Low-level side quests pay in items, Meat and a familiar while their fights still give the experience, so
+// adventure where the most of them are open: zones are ranked by open goals, then by recommended stat (more
+// experience), then by name.
+
+item auto_gourdItem()
+{
+	// the Captain of the Gourd wants an item from the zone that matches your main stat
+	switch(my_primestat())
+	{
+		case $stat[Muscle]: return $item[Knob Goblin firecracker];
+		case $stat[Mysticality]: return $item[razor-sharp can lid];
+	}
+	return $item[spider web];
+}
+
+boolean auto_wantBonePet()
+{
+	// the Spooky Pirate Skeleton: pirate skull, sunken chest, pirate pelvis and 8 skeleton bones
+	return !have_familiar($familiar[Spooky Pirate Skeleton]) && item_amount($item[spooky pirate skeleton]) == 0
+		&& auto_is_valid($item[spooky pirate skeleton]);
+}
+
+int auto_sideQuestGoals(location loc)
+{
+	int goals = 0;
+	boolean artist = internalQuestStatus("questM02Artist") == 0;
+	boolean gourd = internalQuestStatus("questM06Gourd") == 0 && get_property("gourdItemCount").to_int() <= 5
+		&& item_amount(auto_gourdItem()) < get_property("gourdItemCount").to_int();
+	switch(loc)
+	{
+	case $location[The Outskirts of Cobb's Knob]:
+		if(artist && item_amount($item[pretentious paintbrush]) == 0) goals += 1;
+		if(gourd && auto_gourdItem() == $item[Knob Goblin firecracker]) goals += 1;
+		break;
+	case $location[The Haunted Pantry]:
+		if(artist && item_amount($item[pretentious palette]) == 0) goals += 1;
+		if(gourd && auto_gourdItem() == $item[razor-sharp can lid]) goals += 1;
+		break;
+	case $location[The Sleazy Back Alley]:
+		if(artist && item_amount($item[pail of pretentious paint]) == 0) goals += 1;
+		if(gourd && auto_gourdItem() == $item[spider web]) goals += 1;
+		break;
+	case $location[The Skeleton Store]:
+		if(internalQuestStatus("questM23Meatsmith") == 0 && item_amount($item[Check to the Meatsmith]) == 0) goals += 1;
+		if(auto_wantBonePet() && item_amount($item[skeleton bone]) < 8) goals += 1;
+		break;
+	case $location[The Unquiet Garves]:
+		if(auto_wantBonePet() && item_amount($item[skeleton bone]) < 8) goals += 1;
+		break;
+	case $location[The Obligatory Pirate's Cove]:
+		if(auto_wantBonePet() && item_amount($item[sunken chest]) == 0) goals += 1;
+		if(auto_wantBonePet() && item_amount($item[pirate pelvis]) == 0) goals += 1;
+		break;
+	case $location[Madness Bakery]:
+		if(internalQuestStatus("questM25Armorer") >= 0 && internalQuestStatus("questM25Armorer") < 4) goals += 1;
+		break;
+	case $location[The Degrassi Knoll Garage]:
+		if(internalQuestStatus("questM01Untinker") == 0 && item_amount($item[rusty screwdriver]) == 0) goals += 1;
+		break;
+	}
+	return goals;
+}
+
+// start the side quests that are open, and hand in whatever is complete. True if a hand-in happened.
+boolean auto_sideQuestsStartAndFinish()
+{
+	if(internalQuestStatus("questM02Artist") == -1)
+	{
+		visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_noquest");
+	}
+	if(internalQuestStatus("questM06Gourd") == -1)
+	{
+		string page = visit_url("town_right.php?place=gourd");
+		if(page.contains_text("acceptgourdquest"))
+		{
+			visit_url("town_right.php?action=acceptgourdquest");
+		}
+	}
+	startMeatsmithSubQuest();
+	startArmorySubQuest();
+
+	if(internalQuestStatus("questM02Artist") == 0 && item_amount($item[pretentious paintbrush]) > 0
+		&& item_amount($item[pretentious palette]) > 0 && item_amount($item[pail of pretentious paint]) > 0)
+	{
+		auto_log_info("Taking the Pretentious Artist his tools.", "blue");
+		visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_quest");
+		return true;
+	}
+	if(internalQuestStatus("questM06Gourd") == 0 && get_property("gourdItemCount").to_int() <= 5
+		&& item_amount(auto_gourdItem()) >= get_property("gourdItemCount").to_int())
+	{
+		auto_log_info("Taking the Captain of the Gourd his " + auto_gourdItem() + "s.", "blue");
+		visit_url("town_right.php?action=gourd");
+		return true;
+	}
+	if(item_amount($item[rusty screwdriver]) > 0)
+	{
+		auto_log_info("Taking the Untinker his screwdriver.", "blue");
+		visit_url("place.php?whichplace=forestvillage&action=fv_untinker");
+		return true;
+	}
+	if(finishMeatsmithSubQuest() || finishArmorySideQuest())
+	{
+		return true;
+	}
+	if(auto_wantBonePet() && item_amount($item[skeleton bone]) >= 8 && item_amount($item[sunken chest]) > 0
+		&& item_amount($item[pirate pelvis]) > 0)
+	{
+		if(item_amount($item[pirate skull]) == 0)
+		{
+			auto_buyUpTo(1, $item[pirate skull]);	// no known source to farm; buy it once it's affordable
+		}
+		if(item_amount($item[pirate skull]) > 0 && create(1, $item[spooky pirate skeleton]))
+		{
+			auto_log_info("Assembled a Spooky Pirate Skeleton.", "blue");
+			use(1, $item[spooky pirate skeleton]);
+			return true;
+		}
+	}
+	return false;
+}
+
+boolean LX_sideQuestsInsteadOfPowerlevel()
+{
+	if(auto_sideQuestsStartAndFinish())
+	{
+		return true;
+	}
+	location best = $location[none];
+	int bestGoals = 0;
+	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
+		The Unquiet Garves, The Obligatory Pirate's Cove, Madness Bakery, The Degrassi Knoll Garage]
+	{
+		int goals = auto_sideQuestGoals(loc);
+		if(goals == 0 || !zone_isAvailable(loc) || auto_statsTooLowFor(loc))
+		{
+			continue;
+		}
+		if(best == $location[none] || goals > bestGoals
+			|| (goals == bestGoals && (loc.recommended_stat > best.recommended_stat
+			|| (loc.recommended_stat == best.recommended_stat && loc.to_string() < best.to_string()))))
+		{
+			best = loc;
+			bestGoals = goals;
+		}
+	}
+	if(best == $location[none])
+	{
+		return false;
+	}
+	auto_log_info("Nothing to powerlevel with, so doing side quests: " + best + " (" + bestGoals + " goal(s) open there).", "blue");
+	return autoAdv(best);
+}
+
+// The last resort when there are no side quests left either: the toughest ordinary zone we can enter, for experience.
+boolean LX_experienceZoneInsteadOfPowerlevel()
+{
+	location best = $location[none];
+	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
+		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory]
+	{
+		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc))
+		{
+			continue;
+		}
+		if(best == $location[none] || loc.recommended_stat > best.recommended_stat
+			|| (loc.recommended_stat == best.recommended_stat && loc.to_string() < best.to_string()))
+		{
+			best = loc;
+		}
+	}
+	if(best == $location[none])
+	{
+		return false;
+	}
+	auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + best + " for experience.", "blue");
+	return autoAdv(best);
 }
