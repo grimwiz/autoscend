@@ -860,6 +860,20 @@ void preAdvUpdateFamiliar(location place)
 	familiar famChoice = to_familiar(get_property("auto_familiarChoice"));
 	if(famChoice == $familiar[none])
 	{
+		// a new account owns no familiar at all, so there is nothing to choose: adventure without one
+		boolean ownsFamiliar = false;
+		foreach fam in $familiars[]
+		{
+			if(have_familiar(fam))
+			{
+				ownsFamiliar = true;
+				break;
+			}
+		}
+		if(!ownsFamiliar)
+		{
+			return;
+		}
 		if(get_property("auto_familiarChoice") == "")
 		{
 			abort("void preAdvUpdateFamiliar failed because property auto_familiarChoice is empty for some reason");
