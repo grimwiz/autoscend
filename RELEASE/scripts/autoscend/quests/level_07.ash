@@ -162,7 +162,6 @@ boolean L7_defiledAlcove()
 	if (get_property("cyrptAlcoveEvilness").to_int() > (14 + evilBonus))
 	{
 		provideInitiative(850, $location[The Defiled Alcove], true);
-		addToMaximize("100initiative 850max");
 	}
 
 	autoEquip($item[Gravy Boat]);

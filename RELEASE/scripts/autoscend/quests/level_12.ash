@@ -1787,7 +1787,7 @@ boolean L12_themtharHills()
 		{
 			return false;
 		}
-		int meatProvide = (in_hardcore() ? provideMeat(1800, true, true) : provideMeat(1600, true, true));
+		int meatProvide = (in_hardcore() ? provideMeat(1800, $location[The Themthar Hills], true, true) : provideMeat(1600, $location[The Themthar Hills], true, true));
 		if((in_hardcore() && !(meatProvide >= 1800)) || !(meatProvide >= 1600))
 		{
 			int bonusMeat = 0;
@@ -1852,7 +1852,7 @@ boolean L12_themtharHills()
 		use_familiar(famChoice);
 	}
 	equipMaximizedGear();
-	float meatDropHave = provideMeat(1800, true, true);
+	float meatDropHave = provideMeat(1800, $location[The Themthar Hills], true, true);
 
 	if(isActuallyEd() && have_skill($skill[Curse of Fortune]) && item_amount($item[Ka Coin]) > 0)
 	{
@@ -1906,7 +1906,7 @@ boolean L12_themtharHills()
 	}
 
 	auto_getCitizenZone("meat"); //because it can take a turn, get this before getting any other buffs
-	provideMeat(1800, true, false); // Do as much as possible to get meat drops
+	provideMeat(1800, $location[The Themthar Hills], true, false); // Do as much as possible to get meat drops
 
 	{
 		equipWarOutfit();

@@ -1935,6 +1935,8 @@ boolean LX_freeCombatsTask();
 
 ########################################################################################################
 //Defined in autoscend/auto_providers.ash
+float auto_provideWeight(string kind, location loc, float have);
+string auto_provideTerm(string keyword, string kind, location loc, float have, int cap);
 float providePlusCombat(int amt, location loc, boolean doEquips, boolean speculative);
 float providePlusCombat(int amt, boolean doEquips, boolean speculative);
 boolean providePlusCombat(int amt, location loc, boolean doEquips);

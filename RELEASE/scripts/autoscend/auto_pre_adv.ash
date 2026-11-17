@@ -263,27 +263,46 @@ boolean auto_pre_adventure()
 		prepareForTwinPeak(false);
 	}
 
+	// An 8-bit zone pays 100 points a fight, plus a point for each point of its stat over a threshold, up to 300 more:
+	// Initiative over 300 in Vanya's Castle and Damage Absorption over 300 in Megalo-City (the wiki), Item Drop over 100
+	// in Hero's Field and Meat Drop over 150 in the Fungus Plains (their caps, 400 and 450, less 300). Below the threshold
+	// the stat earns nothing, so it is provided as a requirement (500 a point) only when it can be reached, and above it a
+	// point is worth what it saves: 1 point of the 10,000 a fight there, at about 230 points a fight (runs 98-107: 38-52
+	// fights each), auto8BitPointWeight. Runs 98-107 played 124 fights in Vanya's Castle with Initiative weighted 700 a
+	// point to 600 and 200 to 800; 114 of them scored exactly 100, as nothing reached 300.
+	float auto8BitPointWeight = (get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float()) / (230.0 * max(0.01, auto_scorePointMeat(1.0)));
+	string auto8BitTerm(string keyword, int cap)
+	{
+		return round(auto8BitPointWeight) + keyword + " " + cap + "max";
+	}
 	if(place == $location[Vanya\'s Castle])
 	{
-		provideInitiative(600, $location[Vanya\'s Castle], true);	
-		addToMaximize("200initiative 800max");
+		if(provideInitiative(300, $location[Vanya\'s Castle], true, true) >= 300)
+		{
+			provideInitiative(300, $location[Vanya\'s Castle], true);
+			addToMaximize(auto8BitTerm("initiative", 600));
+		}
+		else
+		{
+			auto_log_info("Can't reach 300% Initiative for Vanya's Castle bonus points, so not dressing for it.", "blue");
+		}
 	}
 	if(place == $location[The Fungus Plains])
 	{
-		provideMeat(450, $location[The Fungus Plains], true);
-		addToMaximize("200meat drop 550max");
+		provideMeat(150, $location[The Fungus Plains], true);
+		addToMaximize(auto8BitTerm("meat drop", 450));
 	}
 	if(place == $location[Megalo-City])
 	{
 		buffMaintain($effect[Ghostly Shell], 30, 1, 1);			//+80 DA. 6 MP
 		buffMaintain($effect[Astral Shell], 30, 1, 1);			//+80 DA, 10 MP
 		buffMaintain($effect[Feeling Peaceful], 0, 1, 1);
-		addToMaximize("200DA 600max");
+		addToMaximize("500DA 300max," + auto8BitTerm("DA", 600));
 	}
 	if(place == $location[Hero\'s Field])
 	{
-		provideItem(400, $location[Hero\'s Field], true);
-		addToMaximize("200item 500max");
+		provideItem(100, $location[Hero\'s Field], true);
+		addToMaximize(auto8BitTerm("item", 400));
 	}
 
 	boolean junkyardML;

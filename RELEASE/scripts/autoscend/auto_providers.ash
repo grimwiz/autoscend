@@ -1,3 +1,49 @@
+// The maximizer weight provideInitiative, provideMeat and provideItem give a point of kind ("initiative", "meat",
+// "item") at loc, where have is the amount before they start. Upstream gave every one 500 a point, enough to reach amt whatever else is given up. That
+// suits a requirement (Twin Peak's 40% Initiative, the tower's contests, an 8-bit zone's threshold) but not a zone where
+// each point just saves a little: there the weight is the turns a point saves, at auto_turnValue (2,000 Meat), in the
+// default statement's scale (a point is +1% Meat Drop, auto_scorePointMeat(1.0) = 0.35 Meat a fight).
+// - Item Drop where a drop is wanted, and Meat Drop for the nuns: the drop chance (or the nuns' Meat) is base * (1 +
+//   x/100), so the turns to finish are T = goal / (base * (1 + x/100)) and a point saves T / (100 + x) of them, which is
+//   turnValue / (0.35 * (100 + x)) a turn there: 29 at +100%, 19 at +200%, 8 at the nuns' usual +600%.
+// - Initiative in the Defiled Alcove: a modern zmobie is p = 15% + Initiative/10 of fights and takes 5 evilness to
+//   everything else's 1, so the fights to clear it are E / (1 + 4p) and a point saves 4 / (1000 * (1 + 4p)) of them:
+//   about 10 a turn at runs 98-108's p of 0.3 (zmobies were 19-54% of their Alcove fights).
+// Upstream's 500 made a point of Initiative in the Alcove (600 with level_07's extra 100) outweigh 100% Item Drop and
+// every point of ML; the Alcove is 13-26 turns.
+float auto_provideWeight(string kind, location loc, float have)
+{
+	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float pointMeat = auto_scorePointMeat(1.0);
+	if(pointMeat <= 0.0)
+	{
+		return 500.0;
+	}
+	have = max(0.0, have);
+	if(kind == "item" && loc != $location[Hero\'s Field])
+	{
+		return turnValue / (pointMeat * (100.0 + have));
+	}
+	if(kind == "meat" && loc == $location[The Themthar Hills])
+	{
+		return turnValue / (pointMeat * (100.0 + have));
+	}
+	if(kind == "initiative" && loc == $location[The Defiled Alcove])
+	{
+		float p = min(1.0, 0.15 + have / 1000.0);
+		return turnValue * 4.0 / (1000.0 * (1.0 + 4.0 * p) * pointMeat);
+	}
+	return 500.0;
+}
+
+// The maximizer term provideX adds: weight (auto_provideWeight) a point of keyword, counted up to cap.
+string auto_provideTerm(string keyword, string kind, location loc, float have, int cap)
+{
+	float weight = auto_provideWeight(kind, loc, have);
+	string w = weight >= 100.0 ? to_string(round(weight)) : to_string(round(weight * 10.0) / 10.0);
+	return w + keyword + " " + cap + "max";
+}
+
 
 float providePlusCombat(int amt, location loc, boolean doEquips, boolean speculative) {
 	auto_log_info((speculative ? "Checking if we can" : "Trying to") + " provide " + amt + " positive combat rate, " + (doEquips ? "with" : "without") + " equipment", "blue");
@@ -487,7 +533,7 @@ float provideInitiative(int amt, location loc, boolean doEquips, boolean specula
 
 	if(doEquips)
 	{
-		string max = "500initiative " + amt + "max";
+		string max = auto_provideTerm("initiative", "initiative", loc, numeric_modifier("Initiative"), amt);
 		if(speculative)
 		{
 			simMaximizeWith(loc, max);
@@ -1393,7 +1439,7 @@ float provideMeat(int amt, location loc, boolean doEverything, boolean speculati
 	// don't craft equipment here. See how much +meat we can get with gear on hand
 	if(doEverything)
 	{
-		string max = "500meat " + (amt + 100) + "max";
+		string max = auto_provideTerm("meat", "meat", loc, numeric_modifier("Meat Drop"), amt + 100);
 		if(speculative)
 		{
 			simMaximizeWith(loc, max);
@@ -1593,7 +1639,7 @@ float provideMeat(int amt, location loc, boolean doEverything, boolean speculati
 			auto_buyUpTo(1, $item[Loose Purse Strings]);
 			autoCraft("smith", 1, $item[Lump of Brituminous Coal], $item[Loose purse strings]);
 		}
-		string max = "500meat " + (amt + 100) + "max";
+		string max = auto_provideTerm("meat", "meat", loc, numeric_modifier("Meat Drop"), amt + 100);
 		if(speculative)
 		{
 			simMaximizeWith(loc, max);
@@ -1780,7 +1826,7 @@ float provideItem(int amt, location loc, boolean doEverything, boolean speculati
 	// don't craft equipment here. See how much +item we can get with gear on hand
 	if(doEverything)
 	{
-		string max = "500item " + (amt + 100) + "max";
+		string max = auto_provideTerm("item", "item", loc, numeric_modifier("Item Drop"), amt + 100);
 		if(speculative)
 		{
 			simMaximizeWith(loc, max);
@@ -1975,7 +2021,7 @@ float provideItem(int amt, location loc, boolean doEverything, boolean speculati
 			januaryToteAcquire($item[Broken Champagne Bottle]);
 		}
 
-		string max = "500item " + (amt + 100) + "max";
+		string max = auto_provideTerm("item", "item", loc, numeric_modifier("Item Drop"), amt + 100);
 		if(speculative)
 		{
 			simMaximizeWith(loc, max);
