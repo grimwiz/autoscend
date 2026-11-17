@@ -203,7 +203,14 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	{
 		if(auto_mall_price(it) > my_meat())
 		{
-			abort("Don't have enough meat to restock, big sad");
+			// Can't afford it (a first life has mall access but almost no Meat). Make it from what we have, or go
+			// without: returning false lets the caller farm it in its zone or do something else.
+			if(auto_craftInsteadOfPull(it, howMany - item_amount(it)))
+			{
+				return item_amount(it) >= howMany;
+			}
+			auto_log_info("Can't afford " + it + " at " + auto_mall_price(it) + " Meat with " + my_meat() + " on hand, so going without.", "blue");
+			return false;
 		}
 		if(buy(1, it, maxprice) == 0)
 		{
