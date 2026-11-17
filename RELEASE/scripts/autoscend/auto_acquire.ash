@@ -722,6 +722,19 @@ boolean auto_buyUpTo(int num, item it)
 		take_shop(min(missing, shop_amount(it)), it);
 		missing = num - item_amount(it);
 	}
+	if(missing > 0 && !can_interact() && pulls_remaining() > 0 && storage_amount(it) > 0 && canPull(it))
+	{
+		//in ronin, one pull gets 1000 meat from storage (see pull_meat), so pulling an item we already have in
+		//storage is cheaper than buying another whenever it costs more than a pull is worth (auto_pullValueMeat, at
+		//least 1000). e.g. an antique accordion was 2375 meat every run with 76 in storage. Upstream PR #1786.
+		int price = npc_price(it) > 0 ? npc_price(it) : auto_mall_price(it);
+		if(price > auto_pullValueMeat())
+		{
+			auto_log_info("Pulling " + it + " from storage instead of buying one for " + price + " meat.", "blue");
+			pullXWhenHaveY(it, 1, item_amount(it) + equipped_amount(it));
+			missing = num - item_amount(it);
+		}
+	}
 	if(missing > 0)
 	{
 		buy(missing, it, maxprice);
@@ -2202,17 +2215,7 @@ boolean LX_craftAcquireItems()
 
 		if(buyAntiqueAccordion)
 		{
-			// Every run leaves its accordion in Hagnk's (76 by run 108) and the next one bought another for 2,375.
-			// Pull one instead when a pull is worth less than that (auto_pullValueMeat).
-			item acc = $item[Antique Accordion];
-			if(storage_amount(acc) > 0 && canPull(acc) && auto_pullValueMeat() < npc_price(acc))
-			{
-				pullXWhenHaveY(acc, 1, 0);
-			}
-			if(item_amount(acc) == 0)
-			{
-				auto_buyUpTo(1, acc);
-			}
+			auto_buyUpTo(1, $item[Antique Accordion]);
 		}
 	}
 
