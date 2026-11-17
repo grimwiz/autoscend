@@ -222,8 +222,17 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
-// The most worth paying to buy a pull: the turns it saves times a turn's value (auto_turnValue, default 2,000 Meat:
-// aftercore farming earns ~800-1,000, and a faster run is worth more), the same turn value the diet uses.
+// What a turn is worth in Meat, wherever a turn is traded for Meat or for a pull: 800 (auto_turnValue overrides).
+// A turn saved in-run is mostly one more aftercore turn (autosea earned 382 Meat a turn in November 2026), and
+// together many saved turns bring the run's last day forward (runs 100-107 each spilled 56-196 turns into day 4);
+// 800 is a round figure for both. It was 2,000, which made every turn-saving trade about 2.5 times too eager.
+float auto_turnValue()
+{
+	return get_property("auto_turnValue") == "" ? 800.0 : get_property("auto_turnValue").to_float();
+}
+
+// The most worth paying to buy a pull: the turns it saves times a turn's value (auto_turnValue), the same turn value
+// the diet uses.
 // Turns saved are estimates from run logs; items without one keep autoBuyPriceLimit.
 int auto_pullPriceCap(item it)
 {
@@ -238,7 +247,7 @@ int auto_pullPriceCap(item it)
 	{
 		return limit;
 	}
-	int turnValue = get_property("auto_turnValue") == "" ? 2000 : get_property("auto_turnValue").to_int();
+	int turnValue = auto_turnValue().to_int();
 	return min(limit, to_int(turnsSaved[it] * turnValue));
 }
 
@@ -1534,7 +1543,7 @@ void auto_makeOwnedGear(string statement)
 	}
 	set_property("auto_makeOwnedGearDone", key);
 	maximize(statement, false);	// the best owned gear is the yardstick (see auto_levelUpPull)
-	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float turnValue = auto_turnValue();
 	// make the best, wear it, then look again (against the new gear) until nothing more pays
 	for(int n = 0; n < 10; n++)
 	{
@@ -1661,7 +1670,7 @@ void auto_levelUpPull()
 	// Gear that has to be made from parts in Hagnk's competes for the level's pick on Meat net of its pulls and crafting
 	// turns (a pair of Loathing halves costs two pulls), against the best single pull's net.
 	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
-	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float turnValue = auto_turnValue();
 	float pointMeat = auto_scorePointMeat();
 	float singleNet = 0.0;
 	foreach sl, score in slotBest

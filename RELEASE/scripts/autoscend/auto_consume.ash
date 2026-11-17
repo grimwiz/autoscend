@@ -1379,7 +1379,7 @@ boolean loadConsumables(string _type, ConsumeAction[int] actions)
 			if (obtain_mode == AUTO_OBTAIN_PULL && !in_small())
 			{
 				// don't penalize pulls in small as want best options to utilize limited organs
-				// One value for a turn everywhere (auto_turnValue, default 2,000 Meat): a pull costs auto_pullValue
+				// One value for a turn everywhere (auto_turnValue(), 800 Meat): a pull costs auto_pullValue
 				// (1,000 Meat), plus the mall price if it has to be bought first, converted to adventures. The old
 				// flat 5-adventure charge once pulls were down to 5 made run 100 drink four wine coolers (4 adventures
 				// per liver point) instead of pulling mushroom wines (5) or better.
@@ -2179,7 +2179,7 @@ boolean auto_chewAdventures()
 	// then only held items are chewed and the rest waits for the pulls left over at bedtime.
 	item target = $item[none];
 	float target_value = 0;
-	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float turnValue = auto_turnValue();
 
 	void consider(item it)
 	{
@@ -2715,7 +2715,7 @@ int auto_getConsumablePriceLimit()
 // adventures each, and ran out with 4 stomach, 1 liver and the nightcap to go (Knob nuts: 3 adventures).
 float auto_pullCostAdventures(item it)
 {
-	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float turnValue = auto_turnValue();
 	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
 	// A pull spent on food or drink is one the gear pulls don't get, and the least gear pull taken is
 	// auto_pullMinScorePerLevel points a level, each worth auto_scorePointMeat over the rest of the run: about 0.9

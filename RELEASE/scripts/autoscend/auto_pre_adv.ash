@@ -270,7 +270,7 @@ boolean auto_pre_adventure()
 	// point is worth what it saves: 1 point of the 10,000 a fight there, at about 230 points a fight (runs 98-107: 38-52
 	// fights each), auto8BitPointWeight. Runs 98-107 played 124 fights in Vanya's Castle with Initiative weighted 700 a
 	// point to 600 and 200 to 800; 114 of them scored exactly 100, as nothing reached 300.
-	float auto8BitPointWeight = (get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float()) / (230.0 * max(0.01, auto_scorePointMeat(1.0)));
+	float auto8BitPointWeight = auto_turnValue() / (230.0 * max(0.01, auto_scorePointMeat(1.0)));
 	string auto8BitTerm(string keyword, int cap)
 	{
 		return round(auto8BitPointWeight) + keyword + " " + cap + "max";

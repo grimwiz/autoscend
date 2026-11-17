@@ -1,19 +1,19 @@
 // The maximizer weight provideInitiative, provideMeat and provideItem give a point of kind ("initiative", "meat",
 // "item") at loc, where have is the amount before they start. Upstream gave every one 500 a point, enough to reach amt whatever else is given up. That
 // suits a requirement (Twin Peak's 40% Initiative, the tower's contests, an 8-bit zone's threshold) but not a zone where
-// each point just saves a little: there the weight is the turns a point saves, at auto_turnValue (2,000 Meat), in the
+// each point just saves a little: there the weight is the turns a point saves, at auto_turnValue() (800 Meat), in the
 // default statement's scale (a point is +1% Meat Drop, auto_scorePointMeat(1.0) = 0.35 Meat a fight).
 // - Item Drop where a drop is wanted, and Meat Drop for the nuns: the drop chance (or the nuns' Meat) is base * (1 +
 //   x/100), so the turns to finish are T = goal / (base * (1 + x/100)) and a point saves T / (100 + x) of them, which is
-//   turnValue / (0.35 * (100 + x)) a turn there: 29 at +100%, 19 at +200%, 8 at the nuns' usual +600%.
+//   turnValue / (0.35 * (100 + x)) a turn there: 11 at +100%, 8 at +200%, 3 at the nuns' usual +600%.
 // - Initiative in the Defiled Alcove: a modern zmobie is p = 15% + Initiative/10 of fights and takes 5 evilness to
 //   everything else's 1, so the fights to clear it are E / (1 + 4p) and a point saves 4 / (1000 * (1 + 4p)) of them:
-//   about 10 a turn at runs 98-108's p of 0.3 (zmobies were 19-54% of their Alcove fights).
+//   about 4 a turn at runs 98-108's p of 0.3 (zmobies were 19-54% of their Alcove fights).
 // Upstream's 500 made a point of Initiative in the Alcove (600 with level_07's extra 100) outweigh 100% Item Drop and
 // every point of ML; the Alcove is 13-26 turns.
 float auto_provideWeight(string kind, location loc, float have)
 {
-	float turnValue = get_property("auto_turnValue") == "" ? 2000.0 : get_property("auto_turnValue").to_float();
+	float turnValue = auto_turnValue();
 	float pointMeat = auto_scorePointMeat(1.0);
 	if(pointMeat <= 0.0)
 	{

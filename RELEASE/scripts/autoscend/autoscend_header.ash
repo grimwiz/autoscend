@@ -1619,6 +1619,7 @@ boolean auto_pearlForMeat();
 int auto_combatMpNeeded();
 float auto_fightsLeft();
 float auto_scorePointMeat();
+float auto_turnValue();
 float auto_scorePointMeat(float fights);
 string[string] auto_shopZoneGroups();
 float auto_shopFights(location place);
