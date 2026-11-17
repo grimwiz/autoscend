@@ -960,10 +960,15 @@ float auto_fightsLeft()
 
 // What one maximizer point is worth in Meat over the rest of the run. The default statement prices a point at +1% Meat
 // Drop, and a fight drops about auto_baseMeatPerFight Meat before bonuses (35: run 100 days 2-3, 230 fights).
-float auto_scorePointMeat()
+float auto_scorePointMeat(float fights)
 {
 	float baseMeat = get_property("auto_baseMeatPerFight") == "" ? 35.0 : get_property("auto_baseMeatPerFight").to_float();
-	return auto_fightsLeft() * baseMeat / 100.0;
+	return fights * baseMeat / 100.0;
+}
+
+float auto_scorePointMeat()
+{
+	return auto_scorePointMeat(auto_fightsLeft());
 }
 
 // The gain a pulled piece of gear must show to pay for its pull (auto_pullValue, 1,000 Meat). Gear earns every fight
@@ -1286,8 +1291,8 @@ boolean auto_makeStorageCraft(item it)
 // data/autoscend_shopping_<name>.txt so it can be bought in aftercore and left in Hagnk's for the next run. Asked the
 // same way as the level-up pull (the best owned gear worn first, the same statement, Standard rules), but with the
 // mall allowed, so a slot's best suggestion that needs buying ("buy & pull", "buy") or making ("make") means nothing
-// you own or have in Hagnk's beats it. Each item keeps its best gain, what that gain is worth over the rest of the run
-// (auto_scorePointMeat), the mall price, how often it came up and where. auto_shoppingList = false turns it off.
+// you own or have in Hagnk's beats it. Each item keeps its best gain, the most a gain was worth (auto_scorePointMeat
+// over the fights it pays for, auto_shopFights), the mall price, how often it came up and where. auto_shoppingList = false turns it off.
 // It asks once per price cap in auto_shoppingListPrices (10000,100000,1000000), so each slot lists its best item at
 // each price: with no cap the maximizer skips the price check and every slot came back as an item listed for hundreds
 // of millions or not in the mall at all (run 106 level 12: Talisman of Baio 177M, tiny plastic Naughty Sorceress 500M).
@@ -1304,10 +1309,65 @@ record auto_shopItem
 	string last;
 };
 
-// Adds the gear the maximizer would buy or make for statement to the shopping list. where says what asked
-// ("Level 12", a zone) in the log line.
-void auto_recordShoppingList(string statement, string where)
+// Zones whose maximizer statement adds a stat of its own, grouped by that stat, with each zone's average turns a run
+// (runs 104-107). Those weights are big so the maximizer reaches the zone's cap (500 a point of Item Drop in the
+// Rackets, 600 a point of Initiative in the Alcove), but they only pay while adventuring in a zone that wants the stat.
+// Pricing them over every fight left in the run made run 108's Alcove check value a jockey's hat (+4976) at 1,190,662
+// Meat and a gnawed-up dog bone (+4723 in the Rackets) at 1,189,972, as if they paid that much every fight.
+string[string] auto_shopZoneGroups()
 {
+	string[string] groups;
+	groups["item drop"] = "Infernal Rackets Backstage=16|The Laugh Floor=14|The Middle Chamber=13|Hero's Field=10|The Fungal Nethers=9|The Goatlet=6.5|Itznotyerzitz Mine=2";
+	groups["initiative"] = "The Defiled Alcove=16|Vanya's Castle=13.5";
+	groups["meat drop"] = "The Themthar Hills=15|The Fungus Plains=10";
+	groups["food and booze drop"] = "The Haunted Laundry Room=9|The Haunted Wine Cellar=9|The Goatlet=6.5";
+	groups["+combat"] = "Sonofa Beach=19|The Laugh Floor=14|The Black Forest=13.5|The Typical Tavern Cellar=9";
+	groups["resistance"] = "The Haunted Kitchen=7";
+	groups["damage absorption"] = "Megalo-City=10.5";
+	groups["clowniness"] = "The \"Fun\" House=20";
+	groups["damage"] = "The Smut Orc Logging Camp=29|A Mob of Zeppelin Protesters=9";
+	return groups;
+}
+
+// The fights a gain the maximizer finds at place pays for. Where place adds a stat of its own (auto_shopZoneGroups), the
+// turns left in the zones that want any of the same stats: each zone's average less its turns spent this run, so a
+// zone done early stops counting. Elsewhere, every fight left in the run (auto_fightsLeft).
+float auto_shopFights(location place)
+{
+	float left = auto_fightsLeft();
+	float total = 0.0;
+	boolean grouped = false;
+	boolean[location] counted;
+	foreach grp, spec in auto_shopZoneGroups()
+	{
+		float[location] zones;
+		foreach i, part in split_string(spec, "\\|")
+		{
+			string[int] kv = split_string(part, "=");
+			zones[kv[0].to_location()] = kv[1].to_float();
+		}
+		if(!(zones contains place))
+		{
+			continue;
+		}
+		grouped = true;
+		foreach loc, avg in zones
+		{
+			if(!(counted contains loc))
+			{
+				counted[loc] = true;
+				total += max(0.0, avg - loc.turns_spent);
+			}
+		}
+	}
+	return grouped ? min(left, max(1.0, total)) : left;
+}
+
+// Adds the gear the maximizer would buy or make for statement, asked at place, to the shopping list. where says what
+// asked ("Level 12", a zone) in the log line.
+void auto_recordShoppingList(string statement, string where, location place)
+{
+	float pointMeat = auto_scorePointMeat(auto_shopFights(place));
 	string fname = "autoscend_shopping_" + my_name() + ".txt";
 	string prices = get_property("auto_shoppingListPrices") == "" ? "10000,100000,1000000" : get_property("auto_shoppingListPrices");
 	int[int] caps;
@@ -1355,11 +1415,8 @@ void auto_recordShoppingList(string statement, string where)
 			rec.how = cmd.starts_with("make") ? "make" : (cmd.starts_with("buy using storage") ? "buy & pull" : "buy");
 			rec.price = mall_price(it);
 			rec.last = "run " + my_ascensions() + " level " + my_level() + ", " + my_location();
-			if(entry.score > rec.score)
-			{
-				rec.score = entry.score;
-				rec.meat = to_int(entry.score * auto_scorePointMeat());
-			}
+			rec.score = max(rec.score, entry.score);
+			rec.meat = max(rec.meat, to_int(entry.score * pointMeat));
 			list[it] = rec;
 			logged[it] = true;
 			found += (found == "" ? "" : ", ") + it + " (" + sl + ", +" + to_int(entry.score)
@@ -1389,7 +1446,7 @@ void auto_logShoppingList(string statement)
 	}
 	set_property("auto_shoppingListDone", key);
 	maximize(statement, false);	// the best owned gear worn first, so the list only has what beats it
-	auto_recordShoppingList(statement, "Level " + my_level());
+	auto_recordShoppingList(statement, "Level " + my_level(), my_location());
 }
 
 // The level check sees whatever zone the level is reached in, so gear a zone wants (resistances for the Kitchen,
@@ -1408,7 +1465,7 @@ void auto_zoneShoppingList(location place)
 		return;
 	}
 	set_property("auto_shoppingListZones", my_ascensions() + ":" + done + (done == "" ? "" : ",") + place.to_int());
-	auto_recordShoppingList(get_property("auto_maximize_current"), place.to_string());
+	auto_recordShoppingList(get_property("auto_maximize_current"), place.to_string(), place);
 }
 
 // Once the King is freed, buy the shopping list, so the next ascension finds it in Hagnk's (what's held at ascension
