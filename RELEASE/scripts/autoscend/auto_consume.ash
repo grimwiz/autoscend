@@ -2713,19 +2713,24 @@ int auto_getConsumablePriceLimit()
 // for unpulled food costs about auto_pullAdvPremium adventures (2: pulled food and drink give 4.5-5 a point, the
 // tavern and cafe 2.5-3.5). Run 100 day 3 had 17 pulls for 34 points, spent ten on 1-point items worth 4-5
 // adventures each, and ran out with 4 stomach, 1 liver and the nightcap to go (Knob nuts: 3 adventures).
+// What a pull is worth in Meat: auto_pullValue (1,000). A pull spent on food or drink is one the gear pulls don't get,
+// and the least gear pull taken is auto_pullMinScorePerLevel points a level, each worth auto_scorePointMeat over the
+// rest of the run: about 0.9 turns at level 3 and 1.9 at level 8. Run 102's day 1 pulled 1-drunkenness sidecars at
+// 0.5 turns a pull while its level 8 gear pull went without.
+float auto_pullValueMeat()
+{
+	if(get_property("auto_pullValue") != "")
+	{
+		return get_property("auto_pullValue").to_float();
+	}
+	float perLevel = get_property("auto_pullMinScorePerLevel") == "" ? 2.0 : get_property("auto_pullMinScorePerLevel").to_float();
+	return max(1000.0, perLevel * my_level() * auto_scorePointMeat());
+}
+
 float auto_pullCostAdventures(item it)
 {
 	float turnValue = auto_turnValue();
-	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
-	// A pull spent on food or drink is one the gear pulls don't get, and the least gear pull taken is
-	// auto_pullMinScorePerLevel points a level, each worth auto_scorePointMeat over the rest of the run: about 0.9
-	// turns at level 3 and 1.9 at level 8. Run 102's day 1 pulled 1-drunkenness sidecars at 0.5 turns a pull while
-	// its level 8 gear pull went without.
-	if(get_property("auto_pullValue") == "")
-	{
-		float perLevel = get_property("auto_pullMinScorePerLevel") == "" ? 2.0 : get_property("auto_pullMinScorePerLevel").to_float();
-		pullValue = max(pullValue, perLevel * my_level() * auto_scorePointMeat());
-	}
+	float pullValue = auto_pullValueMeat();
 	float premium = get_property("auto_pullAdvPremium") == "" ? 2.0 : get_property("auto_pullAdvPremium").to_float();
 	float price = storage_amount(it) > 0 ? 0.0 : max(0, auto_mall_price(it));
 	float scarcity = 0.0;

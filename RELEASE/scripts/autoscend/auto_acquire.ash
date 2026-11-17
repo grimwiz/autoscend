@@ -222,13 +222,24 @@ boolean pullXWhenHaveYCasual(item it, int howMany, int whenHave)
 	return true;
 }
 
-// What a turn is worth in Meat, wherever a turn is traded for Meat or for a pull: 800 (auto_turnValue overrides).
-// A turn saved in-run is mostly one more aftercore turn (autosea earned 382 Meat a turn in November 2026), and
-// together many saved turns bring the run's last day forward (runs 100-107 each spilled 56-196 turns into day 4);
-// 800 is a round figure for both. It was 2,000, which made every turn-saving trade about 2.5 times too eager.
+// What a turn is worth in Meat, wherever a turn is traded for Meat or for a pull: a tenth of the Meat on hand, and at
+// least 500 (auto_turnValue overrides). A run has to pay for itself, so autoscend can be run back to back: what it may
+// spend is what it has earned this run, and Meat on hand is that (what you had at ascension is in Hagnk's). The
+// value then steers itself: a run that is earning spends more freely, and one that is overspending gets cheaper as
+// its Meat runs down. With a flat 2,000, runs 105-107 earned 84-87k and spent 5k, 0 and 19k more than that.
+// Run 106's Meat on hand went 5k -> 30k -> 41k, so 500 -> 3,000 -> 4,100; run 107's peaked at 26k and fell to 8k.
+// Once the King is freed, Meat on hand includes everything you own, so the value is 800 there.
 float auto_turnValue()
 {
-	return get_property("auto_turnValue") == "" ? 800.0 : get_property("auto_turnValue").to_float();
+	if(get_property("auto_turnValue") != "")
+	{
+		return get_property("auto_turnValue").to_float();
+	}
+	if(can_interact())
+	{
+		return 800.0;
+	}
+	return max(500.0, my_meat() / 10.0);
 }
 
 // The most worth paying to buy a pull: the turns it saves times a turn's value (auto_turnValue), the same turn value
@@ -921,7 +932,8 @@ boolean pull_meat(int target)
 	return my_meat() >= target;
 }
 
-// Low on meat in Ronin: pull something from Hagnk's that autosells for a lot and sell it. One pull of an unblemished
+// Pull something from Hagnk's that autosells for a lot and sell it: when low on Meat in Ronin (auto_pearlForMeat), and
+// with the pulls left at the end of bedtime (auto_sparePullsForMeat). One pull of an unblemished
 // pearl gives 11,037 Meat; pulling Meat itself takes a pull per 1,000. Other runs leave such items in Hagnk's too: the
 // Island War boss drops a solid gold bowling ball (frat side) or an Iron Beta of Industry (hippy side), 5,000 each, and
 // a giant pearl autosells for 12,000. Standard allows one pull of each item a day, so having several kinds lets more
@@ -930,11 +942,9 @@ boolean pull_meat(int target)
 // auto_pullForMeatMin (default 4000), skipping quest items and anything the mall values at over five times its
 // autosell price (a collectible is worth keeping), and always leaves auto_pullForMeatKeep (default 3) of each in
 // Hagnk's so a bug here can't sell a whole stock. auto_pearlForMeat = false turns it off. Never buys anything.
-boolean auto_pearlForMeat()
+boolean auto_pullForMeat(string why)
 {
-	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
-	if(get_property("auto_pearlForMeat") == "false" || in_hardcore() || can_interact() || my_meat() >= below
-		|| pulls_remaining() == 0)
+	if(get_property("auto_pearlForMeat") == "false" || in_hardcore() || can_interact() || pulls_remaining() == 0)
 	{
 		return false;
 	}
@@ -955,8 +965,34 @@ boolean auto_pearlForMeat()
 	{
 		return false;
 	}
-	auto_log_info("Only " + my_meat() + " Meat: pulled " + best + " to autosell for " + autosell_price(best) + ".", "blue");
+	auto_log_info(why + ": pulled " + best + " to autosell for " + autosell_price(best) + ".", "blue");
 	return autosell(1, best);
+}
+
+boolean auto_pearlForMeat()
+{
+	int below = get_property("auto_pearlMeatBelow") == "" ? 2000 : get_property("auto_pearlMeatBelow").to_int();
+	if(my_meat() >= below)
+	{
+		return false;
+	}
+	return auto_pullForMeat("Only " + my_meat() + " Meat");
+}
+
+// Pulls don't carry over to tomorrow, so whatever is left at the end of bedtime is turned into Meat the same way. Every
+// run banks such items (a gold wedding ring 11,000, a heart of the volcano 10,000, a solid gold bowling ball or an Iron
+// Beta of Industry 5,000, nemesis trophies 4,000): about 30-35k a run, which sat in Hagnk's (91 rings by run 108)
+// while the Meat on hand that pays for the run, and sets the turn value (auto_turnValue), never saw it. Runs 100-107
+// ended with 4-16 pulls unused. Standard allows one pull of each item a day, so this stops when no kind is left.
+void auto_sparePullsForMeat()
+{
+	while(pulls_remaining() > 0)
+	{
+		if(!auto_pullForMeat("Spare pull at bedtime"))
+		{
+			return;
+		}
+	}
 }
 
 // Fights left in the run, for valuing gear that pays a little every fight. A run is about auto_expectedRunTurns turns
@@ -2166,7 +2202,17 @@ boolean LX_craftAcquireItems()
 
 		if(buyAntiqueAccordion)
 		{
-			auto_buyUpTo(1, $item[Antique Accordion]);
+			// Every run leaves its accordion in Hagnk's (76 by run 108) and the next one bought another for 2,375.
+			// Pull one instead when a pull is worth less than that (auto_pullValueMeat).
+			item acc = $item[Antique Accordion];
+			if(storage_amount(acc) > 0 && canPull(acc) && auto_pullValueMeat() < npc_price(acc))
+			{
+				pullXWhenHaveY(acc, 1, 0);
+			}
+			if(item_amount(acc) == 0)
+			{
+				auto_buyUpTo(1, acc);
+			}
 		}
 	}
 
