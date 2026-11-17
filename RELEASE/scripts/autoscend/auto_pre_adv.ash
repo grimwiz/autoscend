@@ -1177,7 +1177,7 @@ void main()
 	try
 	{
 		ret = auto_pre_adventure();
-		if (pathHasFamiliar() && canChangeFamiliar() && my_familiar()==$familiar[none] && !isFantasyRealm(my_location())) {
+		if (pathHasFamiliar() && canChangeFamiliar() && my_familiar()==$familiar[none] && !isFantasyRealm(my_location()) && auto_ownsAnyFamiliar()) {
 			abort("Trying to adventure with no familiar.");
 		}
 	}

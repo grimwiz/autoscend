@@ -133,6 +133,19 @@ boolean pathHasFamiliar() 	// check for cases where the path bans traditional fa
 	return true;
 }
 
+boolean auto_ownsAnyFamiliar()
+{
+	// false only for a new account, which starts without any familiar
+	foreach fam in $familiars[]
+	{
+		if(have_familiar(fam))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 boolean pathAllowsChangingFamiliar()
 {
 		if(!pathHasFamiliar())
@@ -860,19 +873,9 @@ void preAdvUpdateFamiliar(location place)
 	familiar famChoice = to_familiar(get_property("auto_familiarChoice"));
 	if(famChoice == $familiar[none])
 	{
-		// a new account owns no familiar at all, so there is nothing to choose: adventure without one
-		boolean ownsFamiliar = false;
-		foreach fam in $familiars[]
+		if(!auto_ownsAnyFamiliar())
 		{
-			if(have_familiar(fam))
-			{
-				ownsFamiliar = true;
-				break;
-			}
-		}
-		if(!ownsFamiliar)
-		{
-			return;
+			return;		// a new account has no familiar to choose: adventure without one
 		}
 		if(get_property("auto_familiarChoice") == "")
 		{

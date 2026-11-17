@@ -1803,6 +1803,7 @@ boolean isAttackFamiliar(familiar fam);
 boolean auto_famKill(familiar fam, location place);
 boolean pathHasFamiliar();
 boolean pathAllowsChangingFamiliar();
+boolean auto_ownsAnyFamiliar();
 boolean auto_have_familiar(familiar fam);
 boolean canChangeFamiliar();
 boolean canChangeToFamiliar(familiar target);
