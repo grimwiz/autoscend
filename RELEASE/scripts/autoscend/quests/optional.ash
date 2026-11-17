@@ -1395,9 +1395,11 @@ item auto_gourdItem()
 
 boolean auto_wantBonePet()
 {
-	// the Spooky Pirate Skeleton: pirate skull, sunken chest, pirate pelvis and 8 skeleton bones
-	return !have_familiar($familiar[Spooky Pirate Skeleton]) && item_amount($item[spooky pirate skeleton]) == 0
-		&& auto_is_valid($item[spooky pirate skeleton]);
+	// the Misshapen Animal Skeleton, a long-term goal: every pile of dusty animal bones (100% from the skeletal cat,
+	// hamster and monkey in the Haunted Conservatory) gives random parts for the Bag of Animal Bones. A dusty animal
+	// skull (cranium + jawbone, meat-pasted) hatches it once all the other parts are there.
+	return !have_familiar($familiar[Misshapen Animal Skeleton]) && item_amount($item[misshapen animal skeleton]) == 0
+		&& auto_is_valid($item[pile of dusty animal bones]);
 }
 
 int auto_sideQuestGoals(location loc)
@@ -1422,14 +1424,9 @@ int auto_sideQuestGoals(location loc)
 		break;
 	case $location[The Skeleton Store]:
 		if(internalQuestStatus("questM23Meatsmith") == 0 && item_amount($item[Check to the Meatsmith]) == 0) goals += 1;
-		if(auto_wantBonePet() && item_amount($item[skeleton bone]) < 8) goals += 1;
 		break;
-	case $location[The Unquiet Garves]:
-		if(auto_wantBonePet() && item_amount($item[skeleton bone]) < 8) goals += 1;
-		break;
-	case $location[The Obligatory Pirate's Cove]:
-		if(auto_wantBonePet() && item_amount($item[sunken chest]) == 0) goals += 1;
-		if(auto_wantBonePet() && item_amount($item[pirate pelvis]) == 0) goals += 1;
+	case $location[The Haunted Conservatory]:
+		if(auto_wantBonePet()) goals += 1;
 		break;
 	case $location[Madness Bakery]:
 		if(internalQuestStatus("questM25Armorer") >= 0 && internalQuestStatus("questM25Armorer") < 4) goals += 1;
@@ -1483,18 +1480,27 @@ boolean auto_sideQuestsStartAndFinish()
 	{
 		return true;
 	}
-	if(auto_wantBonePet() && item_amount($item[skeleton bone]) >= 8 && item_amount($item[sunken chest]) > 0
-		&& item_amount($item[pirate pelvis]) > 0)
+	if(auto_wantBonePet())
 	{
-		if(item_amount($item[pirate skull]) == 0)
+		if(item_amount($item[pile of dusty animal bones]) > 0)
 		{
-			auto_buyUpTo(1, $item[pirate skull]);	// no known source to farm; buy it once it's affordable
+			use(item_amount($item[pile of dusty animal bones]), $item[pile of dusty animal bones]);	// parts go to the Bag of Animal Bones
 		}
-		if(item_amount($item[pirate skull]) > 0 && create(1, $item[spooky pirate skeleton]))
+		if(item_amount($item[dusty animal skull]) == 0 && item_amount($item[dusty animal cranium]) > 0 && item_amount($item[dusty animal jawbone]) > 0)
 		{
-			auto_log_info("Assembled a Spooky Pirate Skeleton.", "blue");
-			use(1, $item[spooky pirate skeleton]);
-			return true;
+			create(1, $item[dusty animal skull]);
+		}
+		// the skull only hatches the skeleton once every other part is collected, so try it once a day
+		if(item_amount($item[dusty animal skull]) > 0 && !get_property("_auto_triedDustySkull").to_boolean())
+		{
+			set_property("_auto_triedDustySkull", true);
+			use(1, $item[dusty animal skull]);
+			if(item_amount($item[misshapen animal skeleton]) > 0)
+			{
+				auto_log_info("Assembled a Misshapen Animal Skeleton.", "blue");
+				use(1, $item[misshapen animal skeleton]);
+				return true;
+			}
 		}
 	}
 	return false;
@@ -1509,7 +1515,7 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 	location best = $location[none];
 	int bestGoals = 0;
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
-		The Unquiet Garves, The Obligatory Pirate's Cove, Madness Bakery, The Degrassi Knoll Garage]
+		The Haunted Conservatory, Madness Bakery, The Degrassi Knoll Garage]
 	{
 		int goals = auto_sideQuestGoals(loc);
 		if(goals == 0 || !zone_isAvailable(loc) || auto_statsTooLowFor(loc))
