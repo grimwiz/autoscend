@@ -1637,6 +1637,7 @@ boolean LX_craftAcquireItems();
 
 ########################################################################################################
 //Defined in autoscend/auto_adventure.ash
+boolean auto_statsTooLowFor(location loc);
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored
 boolean autoAdv(location loc);

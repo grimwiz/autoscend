@@ -162,6 +162,12 @@ boolean LX_bitchinMeatcar()
 		visit_url("place.php?whichplace=forestvillage&preaction=screwquest&action=fv_untinker_quest");
 	}
 	
+	//too weak for the garage (a first life at level 2): come back later. Without this the failed adventure below looked
+	//like a locked garage, so it visited the guild and returned true, and the task repeated forever without a turn.
+	if(auto_statsTooLowFor($location[The Degrassi Knoll Garage]))
+	{
+		return false;
+	}
 	//attempt to adventure in degrassi knoll garage, if failed attempt to unlock it via guild
 	if(autoAdv(1, $location[The Degrassi Knoll Garage]))
 	{

@@ -2,10 +2,24 @@
 // it will (should?) handle the complete adventure from start to finish regardless of
 // how many choices or combats it encounters (this is mafia's adv1 behaviour)
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
+// KoL won't let you into a zone whose recommended stat is above your main stat: it shows "It is recommended that you
+// have at least ..." instead, and KoLmafia stops with "Your stats are too low for this location". Only a low-level
+// character meets it, such as a first life (a level 2 Seal Clubber with 6 Muscle at the Degrassi Knoll Garage, which
+// recommends 10).
+boolean auto_statsTooLowFor(location loc)
+{
+	return loc.recommended_stat > 0 && my_buffedstat(my_primestat()) < loc.recommended_stat;
+}
+
 boolean autoAdv(int num, location loc, string option)
 {
 	if(!zone_isAvailable(loc, true)){
 		auto_log_warning("Can't get to " + loc + " right now.", "red");
+		return false;
+	}
+	if(auto_statsTooLowFor(loc))
+	{
+		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + loc.recommended_stat + " that " + loc + " recommends, so not going there yet.", "red");
 		return false;
 	}
 
