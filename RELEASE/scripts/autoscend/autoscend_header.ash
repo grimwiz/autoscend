@@ -1653,6 +1653,7 @@ boolean LX_craftAcquireItems();
 boolean auto_statsTooLowFor(location loc);
 boolean auto_canDamageGhosts(location place, boolean prepare);
 string auto_bossNotReadyReason(monster boss);
+void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored
 boolean autoAdv(location loc);
@@ -2032,6 +2033,7 @@ boolean acquireFullHP();
 float mp_regen();
 float hp_regen();
 int doRest();
+boolean auto_restInDwelling(string why);
 boolean auto_restOffBeatenUp();
 boolean haveAnyIotmAlternativeRestSiteAvailable();
 boolean doFreeRest();

@@ -134,11 +134,36 @@ boolean auto_canDamageGhosts(location place, boolean prepare)
 //  - outlasting it: its HP over our usual damage a round (auto_damageEstimate, the second-lowest of the last 10
 //    rounds of each action) gives the rounds; that many of its hits (expected_damage) must leave us standing.
 // The Boss Bat (defence 29, 40 HP) passed at 31 Muscle and was beaten; the Goblin King (defence 47 + 10) fails.
+// And after losing to a boss (auto_noteBossLoss), wait until a base stat has risen before the rematch.
+void auto_noteBossLoss()
+{
+	monster boss = get_property("lastEncounter").to_monster();
+	if(boss == $monster[none] || !boss.boss)
+	{
+		return;
+	}
+	string stats = my_basestat($stat[Muscle]) + "," + my_basestat($stat[Mysticality]) + "," + my_basestat($stat[Moxie]);
+	auto_log_info("Lost to " + boss + " at Muscle, Mysticality, Moxie " + stats + ": no rematch until one of them rises.", "blue");
+	set_property("auto_lostTo_" + boss, my_ascensions() + ":" + stats);
+}
+
 string auto_bossNotReadyReason(monster boss)
 {
 	if(boss == $monster[none] || !boss.boss || boss.base_hp <= 0)
 	{
 		return "";		// not a boss, or one that scales to us
+	}
+	// lost to it before: no rematch until a base stat is higher than it was then
+	string[int] lost = get_property("auto_lostTo_" + boss).split_string(":");
+	if(count(lost) == 2 && lost[0].to_int() == my_ascensions())
+	{
+		string[int] was = lost[1].split_string(",");
+		if(count(was) == 3 && my_basestat($stat[Muscle]) <= was[0].to_int() && my_basestat($stat[Mysticality]) <= was[1].to_int()
+			&& my_basestat($stat[Moxie]) <= was[2].to_int())
+		{
+			return "it beat us at Muscle " + was[0] + ", Mysticality " + was[1] + ", Moxie " + was[2]
+				+ ", and none of those has risen since";
+		}
 	}
 	int ml = monster_level_adjustment();
 	boolean haveSpell = auto_have_skill($skill[Saucestorm]) || auto_have_skill($skill[Saucegeyser]);

@@ -1563,39 +1563,14 @@ boolean adventureFailureHandler()
 	return false;
 }
 
-// Resting in the campground removes Beaten Up, and a first life has nothing else that does (no forest tears, no
-// eyedrop antidote, no mall below level 5). It costs a turn once the free rests are gone, which beats ending the day.
-// With nowhere to rest, put up a tent first: a Barskin Tent (bar skin + wooden stakes) or the Newbiesport tent.
+// Resting removes Beaten Up, and a first life has nothing else that does (no forest tears, no eyedrop antidote, no
+// mall below level 5). It costs a turn once the free rests are gone, which beats ending the day.
 boolean auto_restOffBeatenUp()
 {
-	if(isActuallyEd() || in_darkGyffte() || in_nuclear() || in_wereprof() || in_robot() || in_amw() || in_small())
-	{
-		return false;		// paths whose dwelling is locked or that rest elsewhere
-	}
-	if(my_adventures() == 0 && !haveFreeRestAvailable())
+	if(!auto_restInDwelling("Nothing removes Beaten Up"))
 	{
 		return false;
 	}
-	if(get_dwelling() == $item[big rock])
-	{
-		if(item_amount($item[Barskin Tent]) == 0 && creatable_amount($item[Barskin Tent]) > 0 && auto_is_valid($item[Barskin Tent]))
-		{
-			create(1, $item[Barskin Tent]);
-		}
-		foreach tent in $items[Barskin Tent, Newbiesport&trade; tent]
-		{
-			if(get_dwelling() == $item[big rock] && item_amount(tent) > 0 && auto_is_valid(tent))
-			{
-				use(1, tent);
-			}
-		}
-	}
-	if(get_dwelling() == $item[big rock] && !haveAnyIotmAlternativeRestSiteAvailable())
-	{
-		return false;
-	}
-	auto_log_info("Nothing removes Beaten Up, so resting it off.", "blue");
-	doRest();
 	return have_effect($effect[Beaten Up]) == 0;
 }
 
@@ -1603,6 +1578,7 @@ void beatenUpResolution()
 {
 	if(have_effect($effect[Beaten Up]) > 0)
 	{
+		auto_noteBossLoss();
 		if(get_property("auto_beatenUpCount").to_int() > 10 && get_property("lastEncounter") != "Poetic Justice")
 		{
 			abort("We are getting beaten up too much, this is not good. Aborting.");
