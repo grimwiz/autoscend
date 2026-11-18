@@ -32,6 +32,9 @@ LX_NemesisQuest	auto_nemesisInRun
 LX_unlockDesert
 LX_lockPicking
 LX_fatLootToken
+#	Learn Torso Awareness from Melvign (a shirt try-on gives his letter, the Thinknerd Warehouse has his garment), so a
+#	character who doesn't have it can wear shirts and perm it. Does nothing once it's known.
+LX_melvignShirt
 #	Get the Steel Organ if the user wants it (needs L6 quest complete)
 LX_steelOrgan
 # open up delay zones.
