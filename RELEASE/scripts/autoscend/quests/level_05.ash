@@ -117,6 +117,13 @@ boolean L5_goblinKing()
 	{
 		return false;
 	}
+	// not ready for the King (autoAdv would turn him down): don't spend Harem turns on perfume for him first
+	string notReady = auto_bossNotReadyReason($monster[Knob Goblin King]);
+	if(notReady != "")
+	{
+		auto_log_info("Not going after the Knob Goblin King yet: " + notReady + ".", "blue");
+		return false;
+	}
 	if(robot_delay("outfit"))
 	{
 		return false; // delay for You, Robot path
