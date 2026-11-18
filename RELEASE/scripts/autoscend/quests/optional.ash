@@ -1559,6 +1559,37 @@ boolean auto_sideQuestHandIns()
 	return done;
 }
 
+// autoscend can think a zone is open when KoL says "You can't get to that area" (the Haunted Conservatory before
+// Spookyraven Manor is unlocked). Both choosers below remember such a zone for the day and pick another, rather than
+// letting the failed adventure end the day with turns left.
+boolean auto_zoneRefusedToday(location loc)
+{
+	foreach i, name in get_property("_auto_refusedZones").split_string(",")
+	{
+		if(name == loc.to_string())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+boolean auto_adventureOrRemember(location loc)
+{
+	if(autoAdv(loc))
+	{
+		return true;
+	}
+	if(auto_zoneRefusedToday(loc))
+	{
+		return false;	// already remembered: let the caller give up
+	}
+	string refused = get_property("_auto_refusedZones");
+	auto_log_info("Couldn't adventure in " + loc + ", so leaving it alone for today.", "blue");
+	set_property("_auto_refusedZones", refused == "" ? loc.to_string() : refused + "," + loc);
+	return true;		// no turn spent, but the next loop picks another zone
+}
+
 boolean LX_sideQuestsInsteadOfPowerlevel()
 {
 	if(auto_sideQuestsStartAndFinish())
@@ -1571,7 +1602,7 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 		The Haunted Conservatory, Madness Bakery, The Degrassi Knoll Garage]
 	{
 		int goals = auto_sideQuestGoals(loc);
-		if(goals == 0 || !zone_isAvailable(loc) || auto_statsTooLowFor(loc))
+		if(goals == 0 || !zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
 		{
 			continue;
 		}
@@ -1588,7 +1619,7 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 		return false;
 	}
 	auto_log_info("Nothing to powerlevel with, so doing side quests: " + best + " (" + bestGoals + " goal(s) open there).", "blue");
-	return autoAdv(best);
+	return auto_adventureOrRemember(best);
 }
 
 // The last resort when there are no side quests left either: the toughest ordinary zone we can enter, for experience.
@@ -1598,7 +1629,7 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
 		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory]
 	{
-		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc))
+		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
 		{
 			continue;
 		}
@@ -1613,5 +1644,5 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 		return false;
 	}
 	auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + best + " for experience.", "blue");
-	return autoAdv(best);
+	return auto_adventureOrRemember(best);
 }
