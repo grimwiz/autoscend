@@ -11,6 +11,122 @@ boolean auto_statsTooLowFor(location loc)
 	return loc.recommended_stat > 0 && my_buffedstat(my_primestat()) < loc.recommended_stat;
 }
 
+// Whether we can hurt the ghosts (physically immune monsters) in a zone. With prepare, also gets the MP for the spell or
+// adds the elemental damage to the maximizer. autoAdv asks first without preparing, so a task can pick another zone
+// rather than the pre-adventure script aborting.
+boolean auto_canDamageGhosts(location place, boolean prepare)
+{
+	//if place contains physically immune enemies then we need to be prepared to deal non physical damage.
+	if(!is_ghost_in_zone(place))
+	{
+		return true;		//no ghosts no problem
+	}
+	if(in_plumber())
+	{
+		return true;		//these paths either have their own ghost handling. or can always kill ghosts
+	}
+	if(get_property("youRobotBottom").to_int() == 2)
+	{
+		return true;		//you robot with a rocket crotch. deals fire damage to kill ghosts.
+	}
+	//a few iconic spells per avatar is ok. no need to be too exhaustive
+	foreach sk in $skills[
+		Saucestorm, saucegeyser,	//base classes
+		Fist of the Mummy,		    //actually ed the undying
+		Boil,						//avatar of jarlsberg
+		Bilious Burst,				//zombie slayer
+		Heroic Belch,				//avatar of boris
+		Smoke Break,				//avatar of sneaky pete
+		Fireball Toss,				//path of the plumber
+		Chill of the Tomb,			//dark gyffte
+		Lavafava, Pungent Mung, Beanstorm,			  //avatar of west of loathing
+		Hot Foot, Emmental Elemental, Sax of Violence,//avatar of shadow over loathing
+		Bacon Ray, Spicy Meatball	//adventurer meats world
+		]
+	{
+		if(!prepare && auto_have_skill(sk) && my_maxmp() >= mp_cost(sk))
+		{
+			return true;	//the pre-adventure script will get the MP for it
+		}
+		if(prepare && auto_have_skill(sk))
+		{
+			if(my_maxmp() >= 32)
+				acquireMP(32, 0);		//make sure we actually have the MP to cast spells
+			else acquireMP(my_maxmp() - (my_maxmp() % 6), 0);	//as low_mp_handler: keep a Saucestorm's worth
+		}
+		if(prepare && canUse(sk)) return true;	//we can kill them with a spell
+	}
+	if(auto_haveDarts() && dartEleDmg())
+	{
+		if(prepare) addToMaximize("+equip " + $item[Everfull Dart Holster]); //If we have darts and an elemental damage buff, might as well use that
+		return true;
+	}
+	
+	int m_hot = 1;
+	int m_cold = 1;
+	int m_spooky = 1;
+	int m_sleaze = 1;
+	int m_stench = 1;
+	float [monster] apprates = auto_combat_appearance_rates(place, true);
+	foreach idx, mob in get_monsters(place)
+	{
+		if(apprates[mob] <= 0) continue; //won't show up because banished or req's not fulfilled
+		if(mob.physical_resistance >= 80)
+		{
+			switch(monster_element(mob))
+			{
+			case $element[hot]:
+				m_hot = 0;
+				m_sleaze = 2;
+				m_stench = 2;
+				break;
+			case $element[cold]:
+				m_cold = 0;
+				m_hot = 2;
+				m_spooky = 2;
+				break;
+			case $element[spooky]:
+				m_spooky = 0;
+				m_hot = 2;
+				m_stench = 2;
+				break;
+			case $element[sleaze]:
+				m_sleaze = 0;
+				m_cold = 2;
+				m_spooky = 2;
+				break;
+			case $element[stench]:
+				m_stench = 0;
+				m_sleaze = 2;
+				m_cold = 2;
+				break;
+			}
+		}
+	}
+	
+	string max_with;
+	int bonus;
+	if(m_hot != 0) max_with += "," +10*m_hot+ "hot dmg";
+	if(m_cold != 0) max_with += "," +10*m_cold+ "cold dmg";
+	if(m_spooky != 0) max_with += "," +10*m_spooky+ "spooky dmg";
+	if(m_sleaze != 0) max_with += "," +10*m_sleaze+ "sleaze dmg";
+	if(m_stench != 0) max_with += "," +10*m_stench+ "stench dmg";
+	
+	simMaximizeWith(max_with);
+	if(m_hot != 0) bonus += simValue("hot damage");
+	if(m_cold != 0) bonus += simValue("cold damage");
+	if(m_spooky != 0) bonus += simValue("spooky damage");
+	if(m_sleaze != 0) bonus += simValue("sleaze damage");
+	if(m_stench != 0) bonus += simValue("stench damage");
+	
+	if(bonus > 9)
+	{
+		if(prepare) addToMaximize(max_with);
+		return true;
+	}
+	return false;
+}
+
 boolean autoAdv(int num, location loc, string option)
 {
 	if(!zone_isAvailable(loc, true)){
@@ -20,6 +136,13 @@ boolean autoAdv(int num, location loc, string option)
 	if(auto_statsTooLowFor(loc))
 	{
 		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + loc.recommended_stat + " that " + loc + " recommends, so not going there yet.", "red");
+		return false;
+	}
+	// the pre-adventure script aborts the run in a zone of ghosts we can't hurt, so turn it down here instead and let
+	// the task do something else (a first-life Seal Clubber has no spell and no elemental damage for the Billiards Room)
+	if(!auto_canDamageGhosts(loc, false))
+	{
+		auto_log_warning(loc + " has ghosts and we have no spell or elemental damage to hurt them, so not going there yet.", "red");
 		return false;
 	}
 
