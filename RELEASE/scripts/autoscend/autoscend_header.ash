@@ -2030,6 +2030,7 @@ boolean acquireFullHP();
 float mp_regen();
 float hp_regen();
 int doRest();
+boolean auto_restOffBeatenUp();
 boolean haveAnyIotmAlternativeRestSiteAvailable();
 boolean doFreeRest();
 boolean haveFreeRestAvailable();
