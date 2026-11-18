@@ -3213,6 +3213,11 @@ boolean L11_palindome()
 		if(item_amount($item[Wet Stunt Nut Stew]) == 0)
 		{
 			equipBaseline();
+			// buy or pull the missing ingredients once they fit the budget, rather than farming Whitey's Grove
+			if(auto_finishWithinBudget($item[Wet Stunt Nut Stew]))
+			{
+				return true;
+			}
 			if((item_amount($item[Bird Rib]) == 0) || (item_amount($item[Lion Oil]) == 0))
 			{
 				return doWhiteys();

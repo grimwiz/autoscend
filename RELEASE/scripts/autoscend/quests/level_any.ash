@@ -134,6 +134,12 @@ boolean LX_bitchinMeatcar()
 		}
 	}
 	
+	// buy or pull the rest once it fits the budget, rather than farming every last part
+	if(auto_finishWithinBudget($item[Bitchin\' Meatcar]))
+	{
+		return true;
+	}
+	
 	int enginePartsMissing = 0;
 	foreach it in $items[Spring, Sprocket, Cog, Empty Meat Tank]
 	{

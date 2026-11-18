@@ -2012,6 +2012,7 @@ boolean doTasks()
 
 	finishBuildingSmutOrcBridge();
 	councilMaintenance();
+	auto_sideQuestHandIns();	// a finished side quest's reward costs no turn, so collect it whatever else is going on
 	auto_emptyStorageWhenFree();
 	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl or war trophy beats many pulls of Meat
 	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear

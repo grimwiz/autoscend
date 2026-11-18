@@ -1456,29 +1456,40 @@ boolean auto_sideQuestsStartAndFinish()
 	startMeatsmithSubQuest();
 	startArmorySubQuest();
 
+	return auto_sideQuestHandIns();
+}
+
+// Handing in a finished side quest costs no turn, so doTasks does it every loop rather than waiting for a quiet moment.
+boolean auto_sideQuestHandIns()
+{
+	boolean done = false;
 	if(internalQuestStatus("questM02Artist") == 0 && item_amount($item[pretentious paintbrush]) > 0
 		&& item_amount($item[pretentious palette]) > 0 && item_amount($item[pail of pretentious paint]) > 0)
 	{
 		auto_log_info("Taking the Pretentious Artist his tools.", "blue");
 		visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_quest");
-		return true;
+		done = true;
 	}
 	if(internalQuestStatus("questM06Gourd") == 0 && get_property("gourdItemCount").to_int() <= 5
 		&& item_amount(auto_gourdItem()) >= get_property("gourdItemCount").to_int())
 	{
 		auto_log_info("Taking the Captain of the Gourd his " + auto_gourdItem() + "s.", "blue");
 		visit_url("town_right.php?action=gourd");
-		return true;
+		done = true;
 	}
 	if(item_amount($item[rusty screwdriver]) > 0)
 	{
 		auto_log_info("Taking the Untinker his screwdriver.", "blue");
 		visit_url("place.php?whichplace=forestvillage&action=fv_untinker");
-		return true;
+		done = true;
 	}
-	if(finishMeatsmithSubQuest() || finishArmorySideQuest())
+	if(finishMeatsmithSubQuest())
 	{
-		return true;
+		done = true;
+	}
+	if(finishArmorySideQuest())
+	{
+		done = true;
 	}
 	if(auto_wantBonePet())
 	{
@@ -1499,11 +1510,11 @@ boolean auto_sideQuestsStartAndFinish()
 			{
 				auto_log_info("Assembled a Misshapen Animal Skeleton.", "blue");
 				use(1, $item[misshapen animal skeleton]);
-				return true;
+				done = true;
 			}
 		}
 	}
-	return false;
+	return done;
 }
 
 boolean LX_sideQuestsInsteadOfPowerlevel()

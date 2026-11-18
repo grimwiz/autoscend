@@ -566,6 +566,211 @@ boolean auto_pullWetStew()
 	return pullXWhenHaveY($item[wet stew], 1, 0);
 }
 
+// Farming the pieces of a crafted quest item (the Bitchin' Meatcar, the wet stunt nut stew): before each farming turn,
+// price buying or pulling everything that is still missing, and stop farming once that fits the budget. The budget is a
+// share of the Meat on hand, so it grows as the farm earns while the missing pieces shrink as it drops them, and at
+// some point the two cross. Test run: 51 turns in the Knoll garage for one 20 Meat cog.
+int auto_craftBudget()
+{
+	return my_meat() / 4;
+}
+
+record auto_piecePlan
+{
+	boolean ok;
+	int shortcut;		// Meat for pieces farming would otherwise supply (mall purchases)
+	int needed;			// Meat paid whether we farm or not: NPC pieces, meat paste, meat stacks
+	int pulls;			// in Ronin, every piece from the mall or Hagnk's is a pull
+	int[item] get;		// pieces to buy or pull
+};
+
+// Crafts that cost no turn or cost at most one (cooking without an oven), so making beats farming.
+boolean auto_pieceMakeable(item it)
+{
+	string how = craft_type(it);
+	return how.starts_with("Meatpasting") || how == "Cooking" || how == "Mixing";
+}
+
+// Getting n of a piece without making it: fills shortcut, needed and pulls, or ok = false.
+auto_piecePlan auto_planGetPiece(item it, int n)
+{
+	auto_piecePlan plan;
+	plan.ok = true;
+	plan.get[it] = n;
+	if(it == $item[meat paste] || it == $item[meat stack])
+	{
+		plan.needed = n * (it == $item[meat paste] ? 10 : 100);
+		return plan;
+	}
+	if(npc_price(it) > 0)
+	{
+		plan.needed = n * npc_price(it);
+		return plan;
+	}
+	if(in_hardcore() || !is_tradeable(it) || !auto_is_valid(it))
+	{
+		plan.ok = false;
+		return plan;
+	}
+	if(!can_interact())
+	{
+		if(!canPull(it))
+		{
+			plan.ok = false;
+			return plan;
+		}
+		plan.pulls = n;
+	}
+	if(storage_amount(it) >= n)
+	{
+		return plan;		// in Hagnk's already: free out of Ronin, only the pulls in it
+	}
+	int price = auto_mall_price(it);
+	if(price <= 0 || price >= get_property("autoBuyPriceLimit").to_int())
+	{
+		plan.ok = false;
+		return plan;
+	}
+	plan.shortcut = n * price;
+	return plan;
+}
+
+// The cheapest way to have n of `it` without adventuring: what's in inventory first (claimed in `used`, so two
+// branches don't count the same piece), then buying the rest outright or making it from its own pieces, whichever
+// costs less Meat, then fewer pulls.
+auto_piecePlan auto_planPieces(item it, int n, int[item] used, int depth)
+{
+	auto_piecePlan plan;
+	plan.ok = true;
+	int fromInventory = min(n, max(0, item_amount(it) - used[it]));
+	used[it] += fromInventory;
+	n -= fromInventory;
+	if(n <= 0)
+	{
+		return plan;
+	}
+
+	auto_piecePlan bought = auto_planGetPiece(it, n);
+	if(it == $item[meat paste] || it == $item[meat stack])
+	{
+		return bought;		// made from Meat, not from mafia's other recipes for them
+	}
+
+	auto_piecePlan made;
+	int[item] usedMaking;
+	foreach claimed, amount in used
+	{
+		usedMaking[claimed] = amount;
+	}
+	int[item] ingredients = get_ingredients(it);
+	made.ok = depth < 6 && auto_pieceMakeable(it) && count(ingredients) > 0;
+	if(made.ok && craft_type(it).starts_with("Meatpasting"))
+	{
+		made.needed = 10 * n;		// the meat paste
+	}
+	foreach ing, amount in ingredients
+	{
+		if(!made.ok)
+		{
+			break;
+		}
+		auto_piecePlan part = auto_planPieces(ing, amount * n, usedMaking, depth + 1);
+		made.ok = part.ok;
+		made.shortcut += part.shortcut;
+		made.needed += part.needed;
+		made.pulls += part.pulls;
+		foreach piece, amt in part.get
+		{
+			made.get[piece] += amt;
+		}
+	}
+
+	int boughtMeat = bought.shortcut + bought.needed;
+	int madeMeat = made.shortcut + made.needed;
+	if(made.ok && (!bought.ok || madeMeat < boughtMeat || (madeMeat == boughtMeat && made.pulls < bought.pulls)))
+	{
+		foreach claimed, amount in usedMaking
+		{
+			used[claimed] = amount;
+		}
+		return made;
+	}
+	return bought;
+}
+
+// Finish `it` now by buying or pulling the missing pieces, if that fits the budget. False means keep farming.
+boolean auto_finishWithinBudget(item it)
+{
+	if(item_amount(it) > 0)
+	{
+		return false;
+	}
+	int[item] used;
+	auto_piecePlan plan = auto_planPieces(it, 1, used, 0);
+	if(!plan.ok)
+	{
+		return false;
+	}
+	int budget = auto_craftBudget();
+	string pieces = "";
+	foreach piece, n in plan.get
+	{
+		pieces += (pieces == "" ? "" : ", ") + n + " " + piece;
+	}
+	if(plan.shortcut > budget || plan.shortcut + plan.needed > my_meat()
+		|| (plan.pulls > 0 && pulls_remaining() >= 0 && plan.pulls > pulls_remaining()))
+	{
+		if(pieces != "")
+		{
+			auto_log_info("Still farming " + it + ": the rest (" + pieces + ") costs " + plan.shortcut + " Meat"
+				+ (plan.pulls > 0 ? " and " + plan.pulls + " pull(s)" : "") + ", over the budget of " + budget + ".", "blue");
+		}
+		return false;
+	}
+	if(pieces != "")
+	{
+		auto_log_info("Finishing " + it + " by getting " + pieces + " for " + (plan.shortcut + plan.needed) + " Meat"
+			+ (plan.pulls > 0 ? " and " + plan.pulls + " pull(s)" : "") + ", within the budget of " + budget + ", rather than farming.", "blue");
+	}
+	foreach piece, n in plan.get
+	{
+		int want = item_amount(piece) + n;
+		if(piece == $item[meat paste])
+		{
+			continue;		// made along with the item
+		}
+		if(piece == $item[meat stack])
+		{
+			create(n, piece);
+		}
+		else if(npc_price(piece) > 0)
+		{
+			auto_buyUpTo(want, piece);
+		}
+		else if(can_interact())
+		{
+			if(storage_amount(piece) >= n)
+			{
+				take_storage(n, piece);
+			}
+			else
+			{
+				auto_buyUpTo(want, piece);
+			}
+		}
+		else
+		{
+			pullXWhenHaveY(piece, n, item_amount(piece) + equipped_amount(piece));
+		}
+		if(item_amount(piece) < want)
+		{
+			auto_log_warning("Couldn't get " + n + " " + piece + " for " + it + ", so farming on.", "red");
+			return false;
+		}
+	}
+	return create(1, it) && item_amount(it) > 0;
+}
+
 boolean pullXWhenHaveY(item it, int howMany, int whenHave)
 {
 	if(can_interact())
