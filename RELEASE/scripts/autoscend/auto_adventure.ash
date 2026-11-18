@@ -127,6 +127,46 @@ boolean auto_canDamageGhosts(location place, boolean prepare)
 	return false;
 }
 
+// A boss we can't beat yet: come back later, once levels or gear have caught up. A first life (a level 5 Seal Clubber
+// with no permed skills) met the Knob Goblin King, hit it for 1-3 a round against 60 HP while it hit back for 11, and
+// the combat script aborted the day. Two tests, both with what we know before the fight:
+//  - hitting it: KoL's to-hit is our hit stat against its defence (plus monster level). Spells don't need it.
+//  - outlasting it: its HP over our usual damage a round (auto_damageEstimate, the second-lowest of the last 10
+//    rounds of each action) gives the rounds; that many of its hits (expected_damage) must leave us standing.
+// The Boss Bat (defence 29, 40 HP) passed at 31 Muscle and was beaten; the Goblin King (defence 47 + 10) fails.
+string auto_bossNotReadyReason(monster boss)
+{
+	if(boss == $monster[none] || !boss.boss || boss.base_hp <= 0)
+	{
+		return "";		// not a boss, or one that scales to us
+	}
+	int ml = monster_level_adjustment();
+	boolean haveSpell = auto_have_skill($skill[Saucestorm]) || auto_have_skill($skill[Saucegeyser]);
+	int defence = boss.base_defense + ml;
+	if(!haveSpell && buffed_hit_stat() < defence)
+	{
+		return "our hit stat (" + buffed_hit_stat() + ") is below its defence (" + defence + ")";
+	}
+	int perRound = -1;
+	foreach key in $strings[attack, Lunge Smack, Thrust-Smack, Lunging Thrust-Smack, Saucestorm, Saucegeyser]
+	{
+		perRound = max(perRound, auto_damageEstimate(key));
+	}
+	if(perRound <= 0)
+	{
+		return "";		// no damage seen yet this ascension to judge by
+	}
+	int hp = boss.base_hp + ml;
+	int rounds = (hp + perRound - 1) / perRound;
+	int taken = expected_damage(boss) * rounds;
+	if(taken >= my_maxhp())
+	{
+		return "we'd need about " + rounds + " rounds at " + perRound + " a round for its " + hp + " HP, and its hits ("
+			+ expected_damage(boss) + " each) would take " + taken + " of our " + my_maxhp() + " HP";
+	}
+	return "";
+}
+
 boolean autoAdv(int num, location loc, string option)
 {
 	if(!zone_isAvailable(loc, true)){
@@ -143,6 +183,14 @@ boolean autoAdv(int num, location loc, string option)
 	if(!auto_canDamageGhosts(loc, false))
 	{
 		auto_log_warning(loc + " has ghosts and we have no spell or elemental damage to hurt them, so not going there yet.", "red");
+		return false;
+	}
+	monster boss = get_property("auto_nextEncounter").to_monster();
+	string notReady = auto_bossNotReadyReason(boss);
+	if(notReady != "")
+	{
+		auto_log_warning("Not fighting " + boss + " yet: " + notReady + ". Coming back when we're stronger.", "red");
+		set_property("auto_nextEncounter", "");
 		return false;
 	}
 

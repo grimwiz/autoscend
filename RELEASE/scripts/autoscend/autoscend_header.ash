@@ -1652,6 +1652,7 @@ boolean LX_craftAcquireItems();
 //Defined in autoscend/auto_adventure.ash
 boolean auto_statsTooLowFor(location loc);
 boolean auto_canDamageGhosts(location place, boolean prepare);
+string auto_bossNotReadyReason(monster boss);
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored
 boolean autoAdv(location loc);
