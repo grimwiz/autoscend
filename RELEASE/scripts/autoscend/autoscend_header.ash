@@ -1556,6 +1556,7 @@ boolean LX_galaktikSubQuest();
 item auto_gourdItem();
 boolean auto_wantBonePet();
 int auto_sideQuestGoals(location loc);
+string auto_pressPageButton(string page);
 boolean auto_sideQuestsStartAndFinish();
 boolean auto_sideQuestHandIns();
 boolean LX_sideQuestsInsteadOfPowerlevel();

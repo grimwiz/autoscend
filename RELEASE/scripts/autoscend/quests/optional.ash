@@ -1438,19 +1438,49 @@ int auto_sideQuestGoals(location loc)
 	return goals;
 }
 
+// Presses the button of the first form on a page, sending its hidden fields. The Artist and the Captain of the Gourd
+// first tell you about the job, and only the button takes it. "" if the page has no form.
+string auto_pressPageButton(string page)
+{
+	matcher form = create_matcher("(?s)<form action=\"?([^\" >]+)\"?[^>]*>(.*?)</form>", page);
+	if(!form.find())
+	{
+		return "";
+	}
+	string url = form.group(1);
+	matcher field = create_matcher("<input type=\"?hidden\"? name=\"?([^\" >]+)\"? value=\"?([^\" >]+)\"?", form.group(2));
+	while(field.find())
+	{
+		url += (url.contains_text("?") ? "&" : "?") + field.group(1) + "=" + field.group(2);
+	}
+	return visit_url(url);
+}
+
 // start the side quests that are open, and hand in whatever is complete. True if a hand-in happened.
 boolean auto_sideQuestsStartAndFinish()
 {
 	if(internalQuestStatus("questM02Artist") == -1)
 	{
-		visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_noquest");
+		visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_noquest&getquest=1");
 	}
-	if(internalQuestStatus("questM06Gourd") == -1)
+	// KoLmafia only follows the Gourd at its old address (town_right.php), so it never sees the quest start at the Gourd
+	// Tower. The tower is Noisy while the job is on offer and Quiet once it's taken: record that the way KoLmafia would.
+	if(internalQuestStatus("questM06Gourd") == -1 && !get_property("_auto_gourdLooked").to_boolean())
 	{
-		string page = visit_url("town_right.php?place=gourd");
-		if(page.contains_text("acceptgourdquest"))
+		string town = visit_url("place.php?whichplace=town_right");
+		if(town.contains_text("townright_gourd_loud"))
 		{
-			visit_url("town_right.php?action=acceptgourdquest");
+			auto_pressPageButton(visit_url("place.php?whichplace=town_right&action=townright_gourd_loud"));
+			town = visit_url("place.php?whichplace=town_right");
+		}
+		if(town.contains_text("townright_gourd_quiet"))
+		{
+			set_property("questM06Gourd", "started");
+			set_property("gourdItemCount", 5);
+		}
+		else
+		{
+			set_property("_auto_gourdLooked", true);	// no Gourd Tower job today
 		}
 	}
 	startMeatsmithSubQuest();
@@ -1467,14 +1497,26 @@ boolean auto_sideQuestHandIns()
 		&& item_amount($item[pretentious palette]) > 0 && item_amount($item[pail of pretentious paint]) > 0)
 	{
 		auto_log_info("Taking the Pretentious Artist his tools.", "blue");
-		visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_quest");
+		string page = visit_url("place.php?whichplace=town_wrong&action=townwrong_artist_quest");
+		if(internalQuestStatus("questM02Artist") == 0)
+		{
+			auto_pressPageButton(page);		// in case he asks first, as he does when offering the job
+		}
 		done = true;
 	}
 	if(internalQuestStatus("questM06Gourd") == 0 && get_property("gourdItemCount").to_int() <= 5
 		&& item_amount(auto_gourdItem()) >= get_property("gourdItemCount").to_int())
 	{
 		auto_log_info("Taking the Captain of the Gourd his " + auto_gourdItem() + "s.", "blue");
-		visit_url("town_right.php?action=gourd");
+		string page = visit_url("place.php?whichplace=town_right&action=townright_gourd_quiet");
+		if(!page.contains_text("You acquire"))
+		{
+			page = auto_pressPageButton(page);
+		}
+		if(page.contains_text("You acquire"))
+		{
+			set_property("gourdItemCount", get_property("gourdItemCount").to_int() + 1);	// as KoLmafia does for a trade
+		}
 		done = true;
 	}
 	if(item_amount($item[rusty screwdriver]) > 0)
