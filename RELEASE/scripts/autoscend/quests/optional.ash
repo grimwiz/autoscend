@@ -1646,13 +1646,14 @@ int auto_dropSaleValue(item it)
 	return sell;
 }
 
-// Per turn in a zone, from KoL's appearance rates (non-combats count as nothing): the monsters' attack, which stat
+// Per turn in a zone, from KoL's steady-state appearance rates (non-combats count as nothing; not the monster queue,
+// whose recent fights would make a zone we just left look worse than it is over a day): the monsters' attack, which stat
 // gains follow, so zones can be compared for experience; and what they're worth in Meat, their base Meat with our Meat
 // drop bonus plus their ordinary drops (with our item drop bonus) at what they'd sell for.
 float auto_zoneExpScore(location loc)
 {
 	float score = 0;
-	foreach mob, rate in appearance_rates(loc, true)
+	foreach mob, rate in appearance_rates(loc, false)
 	{
 		if(mob != $monster[none] && rate > 0)
 		{
@@ -1667,7 +1668,7 @@ float auto_zoneMeatPerTurn(location loc)
 	float meatBonus = 1.0 + numeric_modifier("Meat Drop") / 100.0;
 	float itemBonus = 1.0 + numeric_modifier("Item Drop") / 100.0;
 	float value = 0;
-	foreach mob, rate in appearance_rates(loc, true)
+	foreach mob, rate in appearance_rates(loc, false)
 	{
 		if(mob == $monster[none] || rate <= 0)
 		{
