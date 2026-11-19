@@ -1696,19 +1696,13 @@ float auto_zoneMeatPerTurn(location loc)
 	return value;
 }
 
-// The zones the experience fallback chooses between, apart from a farm target: the ordinary zones we can enter, scored
-// per turn for experience and for Meat (with drops). `meat` says whether we're short of Meat (below what's kept for
-// permanent purchases, auto_permanentReserve).
-record auto_expZone
+// The zone the experience fallback picks, apart from a farm target: the toughest ordinary zone we can enter, or, short
+// of Meat (below what's kept for permanent purchases, auto_permanentReserve), the zone with the most Meat a turn of those
+// whose experience is within 10% of the best, so saving costs no experience. autokol compares farm zones with it.
+location auto_experienceZone()
 {
-	location loc;
-	float exp;
-	float meat;
-};
-
-auto_expZone[int] auto_experienceZones()
-{
-	auto_expZone[int] zones;
+	location best = $location[none];
+	location[int] open;
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
 		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory,
 		Cobb's Knob Treasury, Cobb's Knob Barracks, The Beanbat Chamber, The Batrat and Ratbat Burrow]
@@ -1717,35 +1711,34 @@ auto_expZone[int] auto_experienceZones()
 		{
 			continue;
 		}
-		auto_expZone z;
-		z.loc = loc;
-		z.exp = auto_zoneExpScore(loc);
-		z.meat = auto_zoneMeatPerTurn(loc);
-		zones[count(zones)] = z;
-	}
-	return zones;
-}
-
-// The fallback's zone: short of Meat, the richest of those within 10% of the best experience, so saving costs no
-// experience; otherwise the best experience. autokol weighs farm zones against it.
-location auto_experienceZone()
-{
-	auto_expZone[int] zones = auto_experienceZones();
-	float bestExp = 0;
-	foreach i, z in zones bestExp = max(bestExp, z.exp);
-	boolean short = my_meat() < get_property("auto_permanentReserve").to_int();
-	location best = $location[none];
-	float bestValue = -1;
-	foreach i, z in zones
-	{
-		float value = short ? (z.exp >= 0.9 * bestExp ? z.meat : -1) : z.exp;
-		if(value > bestValue || (value == bestValue && z.loc.to_string() < best.to_string()))
+		open[count(open)] = loc;
+		if(best == $location[none] || loc.recommended_stat > best.recommended_stat
+			|| (loc.recommended_stat == best.recommended_stat && loc.to_string() < best.to_string()))
 		{
-			best = z.loc;
-			bestValue = value;
+			best = loc;
 		}
 	}
-	return best;
+	if(best == $location[none] || my_meat() >= get_property("auto_permanentReserve").to_int())
+	{
+		return best;
+	}
+	float bestExp = 0;
+	foreach i, loc in open
+	{
+		bestExp = max(bestExp, auto_zoneExpScore(loc));
+	}
+	location richest = best;
+	float richestMeat = -1;
+	foreach i, loc in open
+	{
+		float meat = auto_zoneMeatPerTurn(loc);
+		if(auto_zoneExpScore(loc) >= 0.9 * bestExp && meat > richestMeat)
+		{
+			richest = loc;
+			richestMeat = meat;
+		}
+	}
+	return richest;
 }
 
 // The last resort when there are no side quests left either.
