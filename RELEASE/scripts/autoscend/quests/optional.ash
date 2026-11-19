@@ -1643,6 +1643,10 @@ int auto_dropSaleValue(item it)
 	{
 		return sell;		// opened for the bone pet's parts, not sold; its thin mall price would flatter the zone
 	}
+	if(it == $item[rat whisker] && get_property("questM02Artist") == "finished")
+	{
+		return 50;			// the Pretentious Artist buys them for 50 Meat each once his quest is done (KoL wiki)
+	}
 	if(get_property("auto_mallSelling").to_boolean() && is_tradeable(it))
 	{
 		int mall = historical_price(it);
