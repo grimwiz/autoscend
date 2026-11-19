@@ -1426,7 +1426,9 @@ int auto_sideQuestGoals(location loc)
 		if(internalQuestStatus("questM23Meatsmith") == 0 && item_amount($item[Check to the Meatsmith]) == 0) goals += 1;
 		break;
 	case $location[The Haunted Conservatory]:
-		if(auto_wantBonePet()) goals += 1;
+		// The bone pet is a background goal (user, 2026-11-19): its 100 random parts take about 500 piles, so as a side
+		// quest it would hold the Conservatory for ~800 turns at ~5 Meat a turn. Piles are still opened whenever the
+		// Conservatory comes up for other reasons.
 		break;
 	case $location[Madness Bakery]:
 		if(internalQuestStatus("questM25Armorer") >= 0 && internalQuestStatus("questM25Armorer") < 4) goals += 1;
@@ -1622,12 +1624,18 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 	return auto_adventureOrRemember(best);
 }
 
-// What a drop is worth when sold: its mall price if it would sell there (above the 100 Meat floor and at least twice
-// its autosell), otherwise its autosell.
+// What a drop is worth when sold: its autosell, unless we sell in the mall (auto_mallSelling, set by whoever owns a
+// store: autokol's autostart once it has bought one). Then its mall price if it would sell there (above the 100 Meat
+// floor and at least twice its autosell). Without a store, cached mall prices are only asking prices we can't reach,
+// and thin ones (ratbatatouille 8,000 against 10 autosell) would decide the zone.
 int auto_dropSaleValue(item it)
 {
 	int sell = autosell_price(it);
-	if(is_tradeable(it))
+	if(it == $item[pile of dusty animal bones] && auto_wantBonePet())
+	{
+		return sell;		// opened for the bone pet's parts, not sold; its thin mall price would flatter the zone
+	}
+	if(get_property("auto_mallSelling").to_boolean() && is_tradeable(it))
 	{
 		int mall = historical_price(it);
 		if(mall > 100 && mall >= 2 * sell)
