@@ -1690,6 +1690,17 @@ float auto_zoneMeatPerTurn(location loc)
 // The last resort when there are no side quests left either: the toughest ordinary zone we can enter, for experience.
 boolean LX_experienceZoneInsteadOfPowerlevel()
 {
+	// A part we want for a crafted upgrade (auto_farmZone and auto_farmItem, set by autokol's autostart): farming it
+	// earns Meat and stats as well as the drop, so it comes first (user, 2026-11-19).
+	location farmZone = get_property("auto_farmZone").to_location();
+	item farmItem = get_property("auto_farmItem").to_item();
+	if(farmZone != $location[none] && farmItem != $item[none] && available_amount(farmItem) == 0
+		&& zone_isAvailable(farmZone) && !auto_statsTooLowFor(farmZone) && !auto_zoneRefusedToday(farmZone))
+	{
+		auto_log_info("Farming " + farmItem + " in " + farmZone + " for a crafted upgrade.", "blue");
+		return auto_adventureOrRemember(farmZone);
+	}
+
 	location best = $location[none];
 	location[int] open;
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
