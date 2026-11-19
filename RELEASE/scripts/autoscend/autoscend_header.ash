@@ -1559,6 +1559,7 @@ int auto_sideQuestGoals(location loc);
 string auto_pressPageButton(string page);
 boolean auto_sideQuestsStartAndFinish();
 boolean auto_zoneRefusedToday(location loc);
+boolean auto_fallbackAdventure(location loc);
 boolean auto_adventureOrRemember(location loc);
 boolean auto_sideQuestHandIns();
 boolean LX_sideQuestsInsteadOfPowerlevel();

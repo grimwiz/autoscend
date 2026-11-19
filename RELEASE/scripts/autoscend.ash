@@ -1523,6 +1523,14 @@ boolean adventureFailureHandler()
 			tooManyAdventures = false;		//if we do not have iotm powerlevel zones then we are forced to use haunted gallery or bedroom
 		}
 		
+		// a zone the fallback chose on purpose for this turn (auto_fallbackAdventure): powerlevelling or farming there
+		// is the plan, not a stall
+		string[int] fallback = split_string(get_property("_auto_fallbackZone"), "@");
+		if(count(fallback) == 2 && fallback[0] == place.to_string() && my_turncount() - fallback[1].to_int() <= 1)
+		{
+			tooManyAdventures = false;
+		}
+
 		if(my_session_adv() < get_property("_auto_override_tooManyAdv").to_int())
 		{
 			tooManyAdventures = false;		//currently in override for too many adv

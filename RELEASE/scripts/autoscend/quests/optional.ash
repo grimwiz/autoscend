@@ -1576,6 +1576,14 @@ boolean auto_zoneRefusedToday(location loc)
 	return false;
 }
 
+// The fallbacks (side quests, a farm target, the experience zone) choose their zone on purpose, so many turns there aren't
+// a sign of being stuck: they note it, with the turn, for adventureFailureHandler (user, 2026-11-19).
+boolean auto_fallbackAdventure(location loc)
+{
+	set_property("_auto_fallbackZone", loc + "@" + my_turncount());
+	return auto_adventureOrRemember(loc);
+}
+
 boolean auto_adventureOrRemember(location loc)
 {
 	if(autoAdv(loc))
@@ -1621,7 +1629,7 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 		return false;
 	}
 	auto_log_info("Nothing to powerlevel with, so doing side quests: " + best + " (" + bestGoals + " goal(s) open there).", "blue");
-	return auto_adventureOrRemember(best);
+	return auto_fallbackAdventure(best);
 }
 
 // What a drop is worth when sold: its autosell, unless we sell in the mall (auto_mallSelling, set by whoever owns a
@@ -1784,7 +1792,7 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 		&& zone_isAvailable(farmZone) && !auto_statsTooLowFor(farmZone) && !auto_zoneRefusedToday(farmZone))
 	{
 		auto_log_info("Farming " + farmItem + " in " + farmZone + " for a crafted upgrade.", "blue");
-		return auto_adventureOrRemember(farmZone);
+		return auto_fallbackAdventure(farmZone);
 	}
 
 	location zone = auto_pickExperienceZone();
@@ -1802,5 +1810,5 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 	{
 		auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + zone + " for experience.", "blue");
 	}
-	return auto_adventureOrRemember(zone);
+	return auto_fallbackAdventure(zone);
 }
