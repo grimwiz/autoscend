@@ -2029,6 +2029,17 @@ boolean doTasks()
 	finishBuildingSmutOrcBridge();
 	councilMaintenance();
 	auto_sideQuestHandIns();	// a finished side quest's reward costs no turn, so collect it whatever else is going on
+
+	// auto_periodicScript: a script to call every auto_periodicTurns turns (default 10) while we play, such as autokol's
+	// upgrade check, which buys and makes gear as the Meat comes in rather than waiting for the next run.
+	string periodic = get_property("auto_periodicScript");
+	int every = get_property("auto_periodicTurns").to_int() > 0 ? get_property("auto_periodicTurns").to_int() : 10;
+	if(periodic != "" && my_turncount() >= get_property("_auto_periodicLastTurn").to_int() + every)
+	{
+		set_property("_auto_periodicLastTurn", my_turncount());
+		auto_log_info("Running " + periodic + " (every " + every + " turns).", "blue");
+		cli_execute("call " + periodic);
+	}
 	auto_emptyStorageWhenFree();
 	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl or war trophy beats many pulls of Meat
 	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear
