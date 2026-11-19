@@ -1562,6 +1562,8 @@ boolean auto_zoneRefusedToday(location loc);
 boolean auto_adventureOrRemember(location loc);
 boolean auto_sideQuestHandIns();
 boolean LX_sideQuestsInsteadOfPowerlevel();
+float auto_zoneExpScore(location loc);
+float auto_zoneMeatPerTurn(location loc);
 boolean LX_experienceZoneInsteadOfPowerlevel();
 boolean startMeatsmithSubQuest();
 boolean finishMeatsmithSubQuest();

@@ -1622,17 +1622,48 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 	return auto_adventureOrRemember(best);
 }
 
+// Per turn in a zone, from KoL's appearance rates (non-combats count as nothing): the monsters' attack, which stat
+// gains follow, so zones can be compared for experience; and their base Meat with our Meat drop bonus.
+float auto_zoneExpScore(location loc)
+{
+	float score = 0;
+	foreach mob, rate in appearance_rates(loc, true)
+	{
+		if(mob != $monster[none] && rate > 0)
+		{
+			score += rate / 100.0 * monster_attack(mob);
+		}
+	}
+	return score;
+}
+
+float auto_zoneMeatPerTurn(location loc)
+{
+	float meat = 0;
+	foreach mob, rate in appearance_rates(loc, true)
+	{
+		if(mob != $monster[none] && rate > 0)
+		{
+			meat += rate / 100.0 * meat_drop(mob);
+		}
+	}
+	return meat * (1.0 + numeric_modifier("Meat Drop") / 100.0);
+}
+
 // The last resort when there are no side quests left either: the toughest ordinary zone we can enter, for experience.
 boolean LX_experienceZoneInsteadOfPowerlevel()
 {
 	location best = $location[none];
+	location[int] open;
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
-		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory]
+		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory,
+		Cobb's Knob Treasury, Cobb's Knob Barracks, The Beanbat Chamber, The Batrat and Ratbat Burrow]
 	{
 		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
 		{
 			continue;
 		}
+		open[count(open)] = loc;
 		if(best == $location[none] || loc.recommended_stat > best.recommended_stat
 			|| (loc.recommended_stat == best.recommended_stat && loc.to_string() < best.to_string()))
 		{
@@ -1643,6 +1674,36 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 	{
 		return false;
 	}
+
+	// Short of Meat (below what's kept for permanent purchases, auto_permanentReserve): of the zones whose experience
+	// is within 10% of the best, take the one with the most Meat a turn, so saving costs no experience.
+	int reserve = get_property("auto_permanentReserve").to_int();
+	if(my_meat() < reserve)
+	{
+		float bestExp = 0;
+		foreach i, loc in open
+		{
+			bestExp = max(bestExp, auto_zoneExpScore(loc));
+		}
+		location richest = $location[none];
+		float richestMeat = 0;
+		foreach i, loc in open
+		{
+			float meat = auto_zoneMeatPerTurn(loc);
+			if(auto_zoneExpScore(loc) >= 0.9 * bestExp && (richest == $location[none] || meat > richestMeat))
+			{
+				richest = loc;
+				richestMeat = meat;
+			}
+		}
+		if(richest != $location[none])
+		{
+			auto_log_info("Short of Meat (" + my_meat() + " of the " + reserve + " kept for permanent purchases), so adventuring in "
+				+ richest + " for about " + round(richestMeat) + " Meat a turn, with experience within 10% of the best open zone.", "blue");
+			return auto_adventureOrRemember(richest);
+		}
+	}
+
 	auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + best + " for experience.", "blue");
 	return auto_adventureOrRemember(best);
 }
