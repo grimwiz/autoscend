@@ -1687,20 +1687,11 @@ float auto_zoneMeatPerTurn(location loc)
 	return value;
 }
 
-// The last resort when there are no side quests left either: the toughest ordinary zone we can enter, for experience.
-boolean LX_experienceZoneInsteadOfPowerlevel()
+// The zone the experience fallback picks, apart from a farm target: the toughest ordinary zone we can enter, or, short
+// of Meat (below what's kept for permanent purchases, auto_permanentReserve), the zone with the most Meat a turn of those
+// whose experience is within 10% of the best, so saving costs no experience. autokol compares farm zones with it.
+location auto_experienceZone()
 {
-	// A part we want for a crafted upgrade (auto_farmZone and auto_farmItem, set by autokol's autostart): farming it
-	// earns Meat and stats as well as the drop, so it comes first (user, 2026-11-19).
-	location farmZone = get_property("auto_farmZone").to_location();
-	item farmItem = get_property("auto_farmItem").to_item();
-	if(farmZone != $location[none] && farmItem != $item[none] && available_amount(farmItem) == 0
-		&& zone_isAvailable(farmZone) && !auto_statsTooLowFor(farmZone) && !auto_zoneRefusedToday(farmZone))
-	{
-		auto_log_info("Farming " + farmItem + " in " + farmZone + " for a crafted upgrade.", "blue");
-		return auto_adventureOrRemember(farmZone);
-	}
-
 	location best = $location[none];
 	location[int] open;
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
@@ -1718,40 +1709,57 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 			best = loc;
 		}
 	}
-	if(best == $location[none])
+	if(best == $location[none] || my_meat() >= get_property("auto_permanentReserve").to_int())
+	{
+		return best;
+	}
+	float bestExp = 0;
+	foreach i, loc in open
+	{
+		bestExp = max(bestExp, auto_zoneExpScore(loc));
+	}
+	location richest = best;
+	float richestMeat = -1;
+	foreach i, loc in open
+	{
+		float meat = auto_zoneMeatPerTurn(loc);
+		if(auto_zoneExpScore(loc) >= 0.9 * bestExp && meat > richestMeat)
+		{
+			richest = loc;
+			richestMeat = meat;
+		}
+	}
+	return richest;
+}
+
+// The last resort when there are no side quests left either.
+boolean LX_experienceZoneInsteadOfPowerlevel()
+{
+	// A part we want for a crafted upgrade (auto_farmZone and auto_farmItem, set by autokol's autostart when farming it
+	// costs less than buying it): farming earns Meat and stats as well as the drop, so it comes first (user, 2026-11-19).
+	location farmZone = get_property("auto_farmZone").to_location();
+	item farmItem = get_property("auto_farmItem").to_item();
+	if(farmZone != $location[none] && farmItem != $item[none] && available_amount(farmItem) == 0
+		&& zone_isAvailable(farmZone) && !auto_statsTooLowFor(farmZone) && !auto_zoneRefusedToday(farmZone))
+	{
+		auto_log_info("Farming " + farmItem + " in " + farmZone + " for a crafted upgrade.", "blue");
+		return auto_adventureOrRemember(farmZone);
+	}
+
+	location zone = auto_experienceZone();
+	if(zone == $location[none])
 	{
 		return false;
 	}
-
-	// Short of Meat (below what's kept for permanent purchases, auto_permanentReserve): of the zones whose experience
-	// is within 10% of the best, take the one with the most Meat a turn, so saving costs no experience.
 	int reserve = get_property("auto_permanentReserve").to_int();
 	if(my_meat() < reserve)
 	{
-		float bestExp = 0;
-		foreach i, loc in open
-		{
-			bestExp = max(bestExp, auto_zoneExpScore(loc));
-		}
-		location richest = $location[none];
-		float richestMeat = 0;
-		foreach i, loc in open
-		{
-			float meat = auto_zoneMeatPerTurn(loc);
-			if(auto_zoneExpScore(loc) >= 0.9 * bestExp && (richest == $location[none] || meat > richestMeat))
-			{
-				richest = loc;
-				richestMeat = meat;
-			}
-		}
-		if(richest != $location[none])
-		{
-			auto_log_info("Short of Meat (" + my_meat() + " of the " + reserve + " kept for permanent purchases), so adventuring in "
-				+ richest + " for about " + round(richestMeat) + " Meat a turn in Meat and drops, with experience within 10% of the best open zone.", "blue");
-			return auto_adventureOrRemember(richest);
-		}
+		auto_log_info("Short of Meat (" + my_meat() + " of the " + reserve + " kept for permanent purchases), so adventuring in "
+			+ zone + " for about " + round(auto_zoneMeatPerTurn(zone)) + " Meat a turn in Meat and drops, with experience within 10% of the best open zone.", "blue");
 	}
-
-	auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + best + " for experience.", "blue");
-	return auto_adventureOrRemember(best);
+	else
+	{
+		auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + zone + " for experience.", "blue");
+	}
+	return auto_adventureOrRemember(zone);
 }

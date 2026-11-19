@@ -1565,6 +1565,7 @@ boolean LX_sideQuestsInsteadOfPowerlevel();
 int auto_dropSaleValue(item it);
 float auto_zoneExpScore(location loc);
 float auto_zoneMeatPerTurn(location loc);
+location auto_experienceZone();
 boolean LX_experienceZoneInsteadOfPowerlevel();
 boolean startMeatsmithSubQuest();
 boolean finishMeatsmithSubQuest();
