@@ -1495,6 +1495,22 @@ boolean auto_sideQuestsStartAndFinish()
 boolean auto_sideQuestHandIns()
 {
 	boolean done = false;
+	// The guild's meatcar quest stays "started" after the meatcar is built until Paco sees it, and his next quest opens
+	// Whitey's Grove. Both are free visits; autoscend otherwise waits for the Palindome to open the Grove (it only visits
+	// Paco in its Monkey's Paw bedtime branch), so a slow character gets white snake skin and the stew's parts much
+	// earlier this way (user, 2026-11-19).
+	if(guild_store_available() && item_amount($item[bitchin' meatcar]) > 0 && internalQuestStatus("questG01Meatcar") == 0)
+	{
+		auto_log_info("Showing Paco the meatcar to finish the guild's meatcar quest.", "blue");
+		visit_url("guild.php?place=paco");
+		done = true;
+	}
+	if(guild_store_available() && get_property("questG01Meatcar") == "finished" && internalQuestStatus("questG02Whitecastle") < 0)
+	{
+		auto_log_info("Taking Paco's next quest, which opens Whitey's Grove.", "blue");
+		visit_url("guild.php?place=paco");
+		done = true;
+	}
 	if(internalQuestStatus("questM02Artist") == 0 && item_amount($item[pretentious paintbrush]) > 0
 		&& item_amount($item[pretentious palette]) > 0 && item_amount($item[pail of pretentious paint]) > 0)
 	{
