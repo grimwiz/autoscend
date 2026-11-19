@@ -142,7 +142,15 @@ boolean buffMaintain(item source, effect buff, int uses, int turns, boolean spec
 	if((item_amount(source) < uses) && !in_wotsf())
 	{
 		int numToBuy = uses - item_amount(source);
-		int meatAvailableToBuy = my_meat() - meatReserve();
+		// auto_permanentReserve: Meat kept for permanent purchases (guild skills, tools, kits) that a temporary buff
+		// mustn't spend. Set by whoever plans those purchases (autokol's autostart); 0 when unset.
+		int permanentReserve = get_property("auto_permanentReserve").to_int();
+		int meatAvailableToBuy = my_meat() - meatReserve() - permanentReserve;
+		if(permanentReserve > 0 && !speculative && meatAvailableToBuy + permanentReserve > max(npc_price(source), historical_price(source))
+			&& meatAvailableToBuy <= max(npc_price(source), historical_price(source)))
+		{
+			auto_log_info("Not buying " + source + " for " + buff + ": " + permanentReserve + " Meat is kept for permanent purchases.", "blue");
+		}
 		// attempt to buy from NPC for meat
 		if(npc_price(source) != 0 && meatAvailableToBuy > npc_price(source))
 		{
