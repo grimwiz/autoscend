@@ -1917,6 +1917,27 @@ boolean process_tasks()
 	return false;
 }
 
+// A watched item (auto_watchItems, item ids) held in a larger amount than when it was last noted in _auto_watchCounts
+// ("id:amount,..."), or none.
+item auto_watchedItemDropped()
+{
+	int[item] noted;
+	foreach i, entry in split_string(get_property("_auto_watchCounts"), ",")
+	{
+		string[int] f = split_string(entry, ":");
+		if(count(f) == 2) noted[f[0].to_int().to_item()] = f[1].to_int();
+	}
+	foreach i, id in split_string(get_property("auto_watchItems"), ",")
+	{
+		item it = id.to_int().to_item();
+		if(it != $item[none] && item_amount(it) > noted[it])
+		{
+			return it;
+		}
+	}
+	return $item[none];
+}
+
 boolean doTasks()
 {
 	//this is the main loop for autoscend. returning true will restart from the begining. returning false will quit the loop and go on to do bedtime
@@ -2031,14 +2052,20 @@ boolean doTasks()
 	auto_sideQuestHandIns();	// a finished side quest's reward costs no turn, so collect it whatever else is going on
 
 	// auto_periodicScript: a script to call every auto_periodicTurns turns (default 10) while we play, such as autokol's
-	// upgrade check, which buys and makes gear as the Meat comes in rather than waiting for the next run.
+	// upgrade check, which buys and makes gear as the Meat comes in rather than waiting for the next run. It's also called
+	// straight away when one of auto_watchItems (parts a listed upgrade is short of) has dropped since the script last
+	// ran (_auto_watchCounts holds the amounts then), which restarts the count of turns.
 	string periodic = get_property("auto_periodicScript");
 	int every = get_property("auto_periodicTurns").to_int() > 0 ? get_property("auto_periodicTurns").to_int() : 10;
-	if(periodic != "" && my_turncount() >= get_property("_auto_periodicLastTurn").to_int() + every)
+	if(periodic != "")
 	{
-		set_property("_auto_periodicLastTurn", my_turncount());
-		auto_log_info("Running " + periodic + " (every " + every + " turns).", "blue");
-		cli_execute("call " + periodic);
+		item dropped = auto_watchedItemDropped();
+		if(dropped != $item[none] || my_turncount() >= get_property("_auto_periodicLastTurn").to_int() + every)
+		{
+			set_property("_auto_periodicLastTurn", my_turncount());
+			auto_log_info("Running " + periodic + (dropped != $item[none] ? " now: " + dropped + " dropped." : " (every " + every + " turns)."), "blue");
+			cli_execute("call " + periodic);
+		}
 	}
 	auto_emptyStorageWhenFree();
 	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl or war trophy beats many pulls of Meat
