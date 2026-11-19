@@ -1,11 +1,57 @@
 import<autoscend.ash>
 
+// A non-combat pick (auto_ncPick: "choice:option" steps separated by commas, the last "choice:option:item id"), set by
+// autokol's check when the part it farms for comes from a non-combat in auto_farmZone. It's taken only while the farm
+// fallback adventures there (_auto_fallbackZone, this turn or the last), so every other visit, and every quest's choice,
+// stays autoscend's own (user, 2026-11-19). An option that gave nothing this time, such as a reward already taken today,
+// goes in the day's _auto_ncPickSpent, which autokol's next check plans without.
+boolean auto_ncPickChoice(int choice, string[int] options)
+{
+	string pick = get_property("auto_ncPick");
+	if(pick == "" || my_location() != get_property("auto_farmZone").to_location()
+		|| available_amount(get_property("auto_farmItem").to_item()) > 0)
+	{
+		return false;
+	}
+	string[int] marker = split_string(get_property("_auto_fallbackZone"), "@");
+	if(count(marker) < 2 || marker[0].to_location() != my_location() || my_turncount() - marker[1].to_int() > 1)
+	{
+		return false;
+	}
+	foreach i, step in split_string(pick, ",")
+	{
+		string[int] f = split_string(step, ":");
+		if(count(f) < 2 || f[0].to_int() != choice)
+		{
+			continue;
+		}
+		int option = f[1].to_int();
+		if(!(options contains option))
+		{
+			return false;		// not offered this time: autoscend chooses
+		}
+		item want = count(f) > 2 ? f[2].to_int().to_item() : $item[none];
+		int before = item_amount(want);
+		auto_log_info("Choice " + choice + ": taking option " + option + (want == $item[none] ? " towards autokol's non-combat pick." : " for " + want + " (autokol's non-combat pick)."), "blue");
+		run_choice(option);
+		if(want != $item[none] && item_amount(want) <= before)
+		{
+			string spent = get_property("_auto_ncPickSpent");
+			set_property("_auto_ncPickSpent", spent + (spent == "" ? "" : ",") + choice + ":" + option);
+			auto_log_info("Choice " + choice + " option " + option + " gave no " + want + " this time, so autokol plans without it today.", "blue");
+		}
+		return true;
+	}
+	return false;
+}
+
 boolean auto_run_choice(int choice, string page)
 {
 	if(robot_choice_adv(choice, page)) return true; // an override function for You, Robot path.
 	
 	auto_log_debug("Running auto_choice_adv.ash");
 	string[int] options = available_choice_options();
+	if(auto_ncPickChoice(choice, options)) return true;
 
 	switch(choice)
 	{
