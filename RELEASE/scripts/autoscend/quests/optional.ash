@@ -1508,7 +1508,10 @@ boolean auto_sideQuestHandIns()
 	if(guild_store_available() && get_property("questG01Meatcar") == "finished" && internalQuestStatus("questG02Whitecastle") < 0)
 	{
 		auto_log_info("Taking Paco's next quest, which opens Whitey's Grove.", "blue");
+		// his offer is a choice (930, Another Errand I Mean Quest): left open, it blocks every page after it. Option 1
+		// takes the quest, as autoscend's Monkey's Paw bedtime branch does.
 		visit_url("guild.php?place=paco");
+		run_choice(1);
 		done = true;
 	}
 	if(internalQuestStatus("questM02Artist") == 0 && item_amount($item[pretentious paintbrush]) > 0
