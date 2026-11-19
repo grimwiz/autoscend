@@ -1622,8 +1622,25 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 	return auto_adventureOrRemember(best);
 }
 
+// What a drop is worth when sold: its mall price if it would sell there (above the 100 Meat floor and at least twice
+// its autosell), otherwise its autosell.
+int auto_dropSaleValue(item it)
+{
+	int sell = autosell_price(it);
+	if(is_tradeable(it))
+	{
+		int mall = historical_price(it);
+		if(mall > 100 && mall >= 2 * sell)
+		{
+			return mall;
+		}
+	}
+	return sell;
+}
+
 // Per turn in a zone, from KoL's appearance rates (non-combats count as nothing): the monsters' attack, which stat
-// gains follow, so zones can be compared for experience; and their base Meat with our Meat drop bonus.
+// gains follow, so zones can be compared for experience; and what they're worth in Meat, their base Meat with our Meat
+// drop bonus plus their ordinary drops (with our item drop bonus) at what they'd sell for.
 float auto_zoneExpScore(location loc)
 {
 	float score = 0;
@@ -1639,15 +1656,27 @@ float auto_zoneExpScore(location loc)
 
 float auto_zoneMeatPerTurn(location loc)
 {
-	float meat = 0;
+	float meatBonus = 1.0 + numeric_modifier("Meat Drop") / 100.0;
+	float itemBonus = 1.0 + numeric_modifier("Item Drop") / 100.0;
+	float value = 0;
 	foreach mob, rate in appearance_rates(loc, true)
 	{
-		if(mob != $monster[none] && rate > 0)
+		if(mob == $monster[none] || rate <= 0)
 		{
-			meat += rate / 100.0 * meat_drop(mob);
+			continue;
 		}
+		float perFight = meat_drop(mob) * meatBonus;
+		foreach i, d in item_drops_array(mob)
+		{
+			if(d.type == "" || d.type == "n")		// not pickpocket-only, conditional or otherwise special
+			{
+				float chance = min(1.0, d.rate / 100.0 * (d.type == "n" ? 1.0 : itemBonus));
+				perFight += chance * auto_dropSaleValue(d.drop);
+			}
+		}
+		value += rate / 100.0 * perFight;
 	}
-	return meat * (1.0 + numeric_modifier("Meat Drop") / 100.0);
+	return value;
 }
 
 // The last resort when there are no side quests left either: the toughest ordinary zone we can enter, for experience.
@@ -1699,7 +1728,7 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 		if(richest != $location[none])
 		{
 			auto_log_info("Short of Meat (" + my_meat() + " of the " + reserve + " kept for permanent purchases), so adventuring in "
-				+ richest + " for about " + round(richestMeat) + " Meat a turn, with experience within 10% of the best open zone.", "blue");
+				+ richest + " for about " + round(richestMeat) + " Meat a turn in Meat and drops, with experience within 10% of the best open zone.", "blue");
 			return auto_adventureOrRemember(richest);
 		}
 	}
