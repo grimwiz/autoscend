@@ -1688,13 +1688,19 @@ float auto_zoneMeatPerTurn(location loc)
 	return value;
 }
 
-// The zone the experience fallback picks, apart from a farm target: the toughest ordinary zone we can enter, or, short
-// of Meat (below what's kept for permanent purchases, auto_permanentReserve), the zone with the most Meat a turn of those
-// whose experience is within 10% of the best, so saving costs no experience. autokol compares farm zones with it.
-location auto_experienceZone()
+// The zones the experience fallback chooses between, apart from a farm target: the ordinary zones we can enter, scored
+// per turn for experience and for Meat (with drops). `meat` says whether we're short of Meat (below what's kept for
+// permanent purchases, auto_permanentReserve).
+record auto_expZone
 {
-	location best = $location[none];
-	location[int] open;
+	location loc;
+	float exp;
+	float meat;
+};
+
+auto_expZone[int] auto_experienceZones()
+{
+	auto_expZone[int] zones;
 	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
 		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory,
 		Cobb's Knob Treasury, Cobb's Knob Barracks, The Beanbat Chamber, The Batrat and Ratbat Burrow]
@@ -1703,34 +1709,68 @@ location auto_experienceZone()
 		{
 			continue;
 		}
-		open[count(open)] = loc;
-		if(best == $location[none] || loc.recommended_stat > best.recommended_stat
-			|| (loc.recommended_stat == best.recommended_stat && loc.to_string() < best.to_string()))
-		{
-			best = loc;
-		}
+		auto_expZone z;
+		z.loc = loc;
+		z.exp = auto_zoneExpScore(loc);
+		z.meat = auto_zoneMeatPerTurn(loc);
+		zones[count(zones)] = z;
 	}
-	if(best == $location[none] || my_meat() >= get_property("auto_permanentReserve").to_int())
-	{
-		return best;
-	}
+	return zones;
+}
+
+// The fallback's best zone, without chance: short of Meat, the richest of those within 10% of the best experience,
+// otherwise the best experience. autokol weighs farm zones against it.
+location auto_experienceZone()
+{
+	auto_expZone[int] zones = auto_experienceZones();
 	float bestExp = 0;
-	foreach i, loc in open
+	foreach i, z in zones bestExp = max(bestExp, z.exp);
+	boolean short = my_meat() < get_property("auto_permanentReserve").to_int();
+	location best = $location[none];
+	float bestValue = -1;
+	foreach i, z in zones
 	{
-		bestExp = max(bestExp, auto_zoneExpScore(loc));
-	}
-	location richest = best;
-	float richestMeat = -1;
-	foreach i, loc in open
-	{
-		float meat = auto_zoneMeatPerTurn(loc);
-		if(auto_zoneExpScore(loc) >= 0.9 * bestExp && meat > richestMeat)
+		float value = short ? (z.exp >= 0.9 * bestExp ? z.meat : -1) : z.exp;
+		if(value > bestValue || (value == bestValue && z.loc.to_string() < best.to_string()))
 		{
-			richest = loc;
-			richestMeat = meat;
+			best = z.loc;
+			bestValue = value;
 		}
 	}
-	return richest;
+	return best;
+}
+
+// The zone the fallback actually goes to: chosen at random among the near-best, so one zone doesn't pile up the turns
+// that adventureFailureHandler reads as being stuck (over 50 in a zone with no quest moving for 25 turns aborts the day)
+// (user, 2026-11-19). Short of Meat: zones within 10% of the best experience and with at least 75% of the richest one's
+// Meat a turn, weighted by Meat. Otherwise: zones within 10% of the best experience, alike.
+location auto_pickExperienceZone()
+{
+	auto_expZone[int] zones = auto_experienceZones();
+	float bestExp = 0;
+	foreach i, z in zones bestExp = max(bestExp, z.exp);
+	boolean short = my_meat() < get_property("auto_permanentReserve").to_int();
+	float richest = 0;
+	foreach i, z in zones if(z.exp >= 0.9 * bestExp) richest = max(richest, z.meat);
+	float[location] weight;
+	float total = 0;
+	foreach i, z in zones
+	{
+		if(z.exp < 0.9 * bestExp || (short && z.meat < 0.75 * richest)) continue;
+		weight[z.loc] = short ? max(z.meat, 1.0) : 1.0;
+		total += weight[z.loc];
+	}
+	if(total <= 0)
+	{
+		return auto_experienceZone();
+	}
+	float roll = random(10000) / 10000.0 * total;
+	foreach loc, wt in weight
+	{
+		roll -= wt;
+		if(roll < 0) return loc;
+	}
+	return auto_experienceZone();
 }
 
 // The last resort when there are no side quests left either.
@@ -1747,7 +1787,7 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 		return auto_adventureOrRemember(farmZone);
 	}
 
-	location zone = auto_experienceZone();
+	location zone = auto_pickExperienceZone();
 	if(zone == $location[none])
 	{
 		return false;
@@ -1756,7 +1796,7 @@ boolean LX_experienceZoneInsteadOfPowerlevel()
 	if(my_meat() < reserve)
 	{
 		auto_log_info("Short of Meat (" + my_meat() + " of the " + reserve + " kept for permanent purchases), so adventuring in "
-			+ zone + " for about " + round(auto_zoneMeatPerTurn(zone)) + " Meat a turn in Meat and drops, with experience within 10% of the best open zone.", "blue");
+			+ zone + " for about " + round(auto_zoneMeatPerTurn(zone)) + " Meat a turn in Meat and drops (picked at random among the zones near the best for experience and Meat).", "blue");
 	}
 	else
 	{
