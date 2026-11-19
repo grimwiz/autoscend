@@ -8,7 +8,9 @@
 // recommends 10).
 boolean auto_statsTooLowFor(location loc)
 {
-	return loc.recommended_stat > 0 && my_buffedstat(my_primestat()) < loc.recommended_stat;
+	// KoLmafia compares the zone's recommended stat with the base main stat, not the buffed one: autogrim with base
+	// Muscle 33 (44 buffed) was refused the Dark Neck of the Woods (40) every loop while this said it could go.
+	return loc.recommended_stat > 0 && my_basestat(my_primestat()) < loc.recommended_stat;
 }
 
 // Whether we can hurt the ghosts (physically immune monsters) in a zone. With prepare, also gets the MP for the spell or
@@ -200,7 +202,7 @@ boolean autoAdv(int num, location loc, string option)
 	}
 	if(auto_statsTooLowFor(loc))
 	{
-		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + loc.recommended_stat + " that " + loc + " recommends, so not going there yet.", "red");
+		auto_log_warning("Our base " + my_primestat() + " (" + my_basestat(my_primestat()) + ") is below the " + loc.recommended_stat + " that " + loc + " recommends, so not going there yet.", "red");
 		return false;
 	}
 	// the pre-adventure script aborts the run in a zone of ghosts we can't hurt, so turn it down here instead and let
