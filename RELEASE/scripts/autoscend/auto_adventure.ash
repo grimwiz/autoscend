@@ -208,6 +208,65 @@ int auto_damagePerRound()
 	return perRound;
 }
 
+// One-hit kills seen this life (user, 2026-11-20): auto_oneHitKills holds "monster id:1" for a monster our first attack
+// or damage skill killed and "monster id:0" for one that took more. The latest fight with each counts, since gear and
+// levels change our damage. 1, 0, or -1 when we haven't fought it that way yet.
+int auto_oneHitSeen(monster mob)
+{
+	foreach i, entry in split_string(get_property("auto_oneHitKills"), ",")
+	{
+		string[int] f = split_string(entry, ":");
+		if(count(f) == 2 && f[0].to_int() == mob.id)
+		{
+			return f[1].to_int();
+		}
+	}
+	return -1;
+}
+
+// Notes the fight just won, if it was all attacks and damage skills: an instakill, a stun or an item says nothing about
+// our damage. Called after every adventure; _auto_oneHitNoted keeps a fight from being noted twice.
+void auto_noteOneHitKill()
+{
+	string started = get_property("_lastCombatStarted");
+	if(started == "" || started == get_property("_auto_oneHitNoted"))
+	{
+		return;
+	}
+	set_property("_auto_oneHitNoted", started);
+	monster mob = last_monster();
+	if(!get_property("_lastCombatWon").to_boolean() || mob == $monster[none] || mob.boss)
+	{
+		return;
+	}
+	int hits = 0;
+	foreach i, action in split_string(get_property("_lastCombatActions"), ";")
+	{
+		if(action == "")
+		{
+			continue;
+		}
+		if(!($strings[attack, sk1003, sk1004, sk1005, sk4005, sk4012] contains action))
+		{
+			return;		// not just Thrust-Smack, Lunge Smack, Lunging Thrust-Smack, Saucestorm or Saucegeyser
+		}
+		hits += 1;
+	}
+	if(hits == 0)
+	{
+		return;
+	}
+	string kept = "";
+	foreach i, entry in split_string(get_property("auto_oneHitKills"), ",")
+	{
+		if(entry != "" && split_string(entry, ":")[0].to_int() != mob.id)
+		{
+			kept += (kept == "" ? "" : ",") + entry;
+		}
+	}
+	set_property("auto_oneHitKills", kept + (kept == "" ? "" : ",") + mob.id + ":" + (hits == 1 ? 1 : 0));
+}
+
 // Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it
 // gets the monster's full HP and our maximum; during one (combat stage 2's retreat) what it has left and what we have.
 string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp)

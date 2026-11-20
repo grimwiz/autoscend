@@ -1771,15 +1771,12 @@ location auto_experienceZone()
 }
 
 // HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: every monster we'd meet dies
-// in one round to our usual damage, and no single hit of theirs can drop us. They may still hit once before we act, so
-// each counts its expected hit, weighted by how often it appears.
+// to one hit, and no single hit of theirs can drop us. One hit is what we've seen (auto_oneHitSeen) or, for a monster we
+// haven't fought that way yet, our usual damage against its HP. They may still hit once before we act, so each counts
+// its expected hit, weighted by how often it appears.
 float auto_lowHpFightCost(location loc)
 {
 	int perRound = auto_damagePerRound();
-	if(perRound <= 0)
-	{
-		return -1;			// no damage seen yet this life to judge by
-	}
 	float cost = 0;
 	boolean anyFight = false;
 	foreach mob, rate in appearance_rates(loc, false)
@@ -1788,8 +1785,10 @@ float auto_lowHpFightCost(location loc)
 		{
 			continue;
 		}
-		if(mob.boss || monster_hp(mob) <= 0 || monster_hp(mob) > perRound || !auto_canHit(monster_defense(mob))
-			|| expected_damage(mob) >= my_hp())
+		int seen = auto_oneHitSeen(mob);
+		boolean oneHit = seen >= 0 ? seen == 1
+			: (perRound > 0 && monster_hp(mob) > 0 && monster_hp(mob) <= perRound && auto_canHit(monster_defense(mob)));
+		if(mob.boss || !oneHit || expected_damage(mob) >= my_hp())
 		{
 			return -1;
 		}

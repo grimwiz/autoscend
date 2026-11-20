@@ -1663,6 +1663,8 @@ int auto_zoneDeaths(location loc);
 int auto_statNeededFor(location loc);
 boolean auto_canHit(int defence);
 int auto_damagePerRound();
+int auto_oneHitSeen(monster mob);
+void auto_noteOneHitKill();
 boolean[location] auto_ordinaryZones();
 float auto_lowHpFightCost(location loc);
 boolean auto_lowHpAdventure();
