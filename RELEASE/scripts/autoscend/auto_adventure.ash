@@ -166,9 +166,15 @@ string auto_bossNotReadyReason(monster boss)
 		}
 	}
 	int ml = monster_level_adjustment();
+	return auto_wouldLoseReason(boss, boss.base_hp + ml, boss.base_defense + ml, my_maxhp());
+}
+
+// Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it
+// gets the monster's full HP and our maximum; during one (combat stage 2's retreat) what it has left and what we have.
+string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp)
+{
 	boolean haveSpell = auto_have_skill($skill[Saucestorm]) || auto_have_skill($skill[Saucegeyser]);
-	int defence = boss.base_defense + ml;
-	if(!haveSpell && buffed_hit_stat() < defence)
+	if(!haveSpell && buffed_hit_stat() < defence && expected_damage(enemy) > 0)	// one that can't hurt us can't win
 	{
 		return "our hit stat (" + buffed_hit_stat() + ") is below its defence (" + defence + ")";
 	}
@@ -177,17 +183,16 @@ string auto_bossNotReadyReason(monster boss)
 	{
 		perRound = max(perRound, auto_damageEstimate(key));
 	}
-	if(perRound <= 0)
+	if(perRound <= 0 || hp <= 0)
 	{
 		return "";		// no damage seen yet this ascension to judge by
 	}
-	int hp = boss.base_hp + ml;
 	int rounds = (hp + perRound - 1) / perRound;
-	int taken = expected_damage(boss) * rounds;
-	if(taken >= my_maxhp())
+	int taken = expected_damage(enemy) * rounds;
+	if(taken >= ourHp)
 	{
 		return "we'd need about " + rounds + " rounds at " + perRound + " a round for its " + hp + " HP, and its hits ("
-			+ expected_damage(boss) + " each) would take " + taken + " of our " + my_maxhp() + " HP";
+			+ expected_damage(enemy) + " each) would take " + taken + " of our " + ourHp + " HP";
 	}
 	return "";
 }

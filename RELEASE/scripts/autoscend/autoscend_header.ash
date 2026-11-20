@@ -1658,6 +1658,7 @@ boolean LX_craftAcquireItems();
 boolean auto_statsTooLowFor(location loc);
 boolean auto_canDamageGhosts(location place, boolean prepare);
 string auto_bossNotReadyReason(monster boss);
+string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp);
 void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored
