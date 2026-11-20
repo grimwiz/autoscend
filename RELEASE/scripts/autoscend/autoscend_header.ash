@@ -1659,6 +1659,17 @@ boolean auto_statsTooLowFor(location loc);
 boolean auto_canDamageGhosts(location place, boolean prepare);
 string auto_bossNotReadyReason(monster boss);
 string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp);
+int auto_zoneDeaths(location loc);
+void auto_noteZoneDeath();
+int auto_statNeededFor(location loc);
+boolean auto_canHit(int defence);
+int auto_damagePerRound();
+boolean[location] auto_ordinaryZones();
+float auto_lowHpFightCost(location loc);
+boolean auto_lowHpAdventure();
+boolean auto_lowHpZoneNow(location place);
+float auto_restHp();
+float auto_meatPerHp();
 void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored

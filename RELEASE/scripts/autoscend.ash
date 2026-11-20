@@ -186,6 +186,7 @@ void initializeSettings() {
 	set_property("auto_beatenUpCount", 0);
 	set_property("auto_beatenUpLastAdv", false);
 	remove_property("auto_beatenUpLocations");
+	remove_property("auto_zoneDeaths");
 	set_property("auto_getBeehive", false);
 	set_property("auto_bruteForcePalindome", false);
 	set_property("auto_doWhiteys", false);
@@ -2098,6 +2099,7 @@ boolean doTasks()
 	
 	auto_useLeprecondoDrops();
 
+	if (auto_lowHpAdventure()) { return true; }	// low on HP with only paid rests left: a turn where we can't be hurt may pay better
 	if (LX_zootoFight()) { return true; }
 
 

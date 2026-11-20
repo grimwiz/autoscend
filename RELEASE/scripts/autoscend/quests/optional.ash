@@ -1722,13 +1722,19 @@ float auto_zoneMeatPerTurn(location loc)
 // The zone the experience fallback picks, apart from a farm target: the toughest ordinary zone we can enter, or, short
 // of Meat (below what's kept for permanent purchases, auto_permanentReserve), the zone with the most Meat a turn of those
 // whose experience is within 10% of the best, so saving costs no experience. autokol compares farm zones with it.
+// The ordinary zones the fallbacks choose between: always open once unlocked, no quest of their own to spoil.
+boolean[location] auto_ordinaryZones()
+{
+	return $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
+		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory,
+		Cobb's Knob Treasury, Cobb's Knob Barracks, The Beanbat Chamber, The Batrat and Ratbat Burrow];
+}
+
 location auto_experienceZone()
 {
 	location best = $location[none];
 	location[int] open;
-	foreach loc in $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
-		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory,
-		Cobb's Knob Treasury, Cobb's Knob Barracks, The Beanbat Chamber, The Batrat and Ratbat Burrow]
+	foreach loc in auto_ordinaryZones()
 	{
 		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
 		{
@@ -1762,6 +1768,95 @@ location auto_experienceZone()
 		}
 	}
 	return richest;
+}
+
+// HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: every monster we'd meet dies
+// in one round to our usual damage, and no single hit of theirs can drop us. They may still hit once before we act, so
+// each counts its expected hit, weighted by how often it appears.
+float auto_lowHpFightCost(location loc)
+{
+	int perRound = auto_damagePerRound();
+	if(perRound <= 0)
+	{
+		return -1;			// no damage seen yet this life to judge by
+	}
+	float cost = 0;
+	boolean anyFight = false;
+	foreach mob, rate in appearance_rates(loc, false)
+	{
+		if(mob == $monster[none] || rate <= 0)
+		{
+			continue;
+		}
+		if(mob.boss || monster_hp(mob) <= 0 || monster_hp(mob) > perRound || !auto_canHit(monster_defense(mob))
+			|| expected_damage(mob) >= my_hp())
+		{
+			return -1;
+		}
+		cost += rate / 100.0 * expected_damage(mob);
+		anyFight = true;
+	}
+	return anyFight ? cost : -1;
+}
+
+// HP recovery when the only HP left costs turns (user, 2026-11-20). With the free rests gone and no restore we can
+// afford, autoscend rests in the campground before an adventure: a turn for the dwelling's HP (auto_restHp: 9 in the
+// Newbiesport tent, up to 250 in the Getaway). A turn in a zone we can fight in at our HP with impunity
+// (auto_lowHpFightCost) instead earns its Meat, which buys HP at the cheapest price an NPC charges (auto_meatPerHp), and
+// stats, which resting doesn't. So when that Meat's HP, less the hits taken there, is at least a rest's, adventure there
+// without healing first. Stats come on top and aren't counted; a level gained refills HP as well.
+boolean auto_lowHpAdventure()
+{
+	if(my_hp() > my_maxhp() * 0.75 || have_effect($effect[Beaten Up]) > 0 || haveFreeRestAvailable())
+	{
+		return false;		// the pre-adventure script won't heal (it does at 75%), or it heals for free
+	}
+	if(count(__maximize_restore_options(my_maxhp(), my_mp(), meatReserve(), true)) > 0)
+	{
+		return false;		// something affordable restores HP: no turn needed
+	}
+	float restHp = auto_restHp();
+	float meatPerHp = auto_meatPerHp();
+	if(meatPerHp <= 0)
+	{
+		return false;		// nothing to buy HP with, so Meat can't stand in for a rest
+	}
+	location best = $location[none];
+	float bestHp = 0;
+	foreach loc in auto_ordinaryZones()
+	{
+		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
+		{
+			continue;
+		}
+		float cost = auto_lowHpFightCost(loc);
+		if(cost < 0)
+		{
+			continue;
+		}
+		float hp = auto_zoneMeatPerTurn(loc) / meatPerHp - cost;
+		if(hp > bestHp)
+		{
+			best = loc;
+			bestHp = hp;
+		}
+	}
+	if(best == $location[none] || bestHp < restHp)
+	{
+		return false;
+	}
+	auto_log_info("At " + my_hp() + "/" + my_maxhp() + " HP with nothing affordable to heal: a turn in " + best + " earns about "
+		+ round(auto_zoneMeatPerTurn(best)) + " Meat (" + round(bestHp) + " HP at " + to_string(meatPerHp, "%.1f")
+		+ " Meat each, after its hits) and stats, against " + round(restHp) + " HP for a turn's rest, so adventuring there without healing.", "blue");
+	set_property("_auto_lowHpZone", best + "@" + my_turncount());
+	return auto_fallbackAdventure(best);
+}
+
+// The zone auto_lowHpAdventure chose for this turn, which the pre-adventure script goes into without healing.
+boolean auto_lowHpZoneNow(location place)
+{
+	string[int] f = split_string(get_property("_auto_lowHpZone"), "@");
+	return count(f) == 2 && f[0].to_location() == place && f[1].to_int() == my_turncount();
 }
 
 // The last resort when there are no side quests left either.

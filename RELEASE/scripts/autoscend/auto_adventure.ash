@@ -2,13 +2,54 @@
 // it will (should?) handle the complete adventure from start to finish regardless of
 // how many choices or combats it encounters (this is mafia's adv1 behaviour)
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
-// KoL won't let you into a zone whose recommended stat is above your main stat: it shows "It is recommended that you
-// have at least ..." instead, and KoLmafia stops with "Your stats are too low for this location". Only a low-level
-// character meets it, such as a first life (a level 2 Seal Clubber with 6 Muscle at the Degrassi Knoll Garage, which
-// recommends 10).
+// Deaths in fights this life, by zone (auto_zoneDeaths: "location id:deaths" pairs), noted when a fight leaves us
+// Beaten Up. A non-combat that beats us up on purpose, like the Palindome's Poetic Justice, isn't a lost fight.
+int auto_zoneDeaths(location loc)
+{
+	foreach i, entry in split_string(get_property("auto_zoneDeaths"), ",")
+	{
+		string[int] f = split_string(entry, ":");
+		if(count(f) == 2 && f[0].to_int() == loc.to_int())
+		{
+			return f[1].to_int();
+		}
+	}
+	return 0;
+}
+
+void auto_noteZoneDeath()
+{
+	if(get_property("lastEncounter").to_monster() == $monster[none] || my_location() == $location[none])
+	{
+		return;
+	}
+	string kept = "";
+	foreach i, entry in split_string(get_property("auto_zoneDeaths"), ",")
+	{
+		string[int] f = split_string(entry, ":");
+		if(count(f) == 2 && f[0].to_int() != my_location().to_int())
+		{
+			kept += (kept == "" ? "" : ",") + entry;
+		}
+	}
+	int deaths = auto_zoneDeaths(my_location()) + 1;
+	set_property("auto_zoneDeaths", kept + (kept == "" ? "" : ",") + my_location().to_int() + ":" + deaths);
+	auto_log_info("Lost a fight in " + my_location() + " (" + deaths + " this life): it now wants " + auto_statNeededFor(my_location())
+		+ " " + my_primestat() + " before we go back.", "blue");
+}
+
+// The main stat a zone wants before we go in: KoL's recommendation (which it doesn't enforce) plus one for every fight
+// lost there this life (user, 2026-11-20). The recommendation follows the main stat, but what loses fights is often
+// another one (a Seal Clubber's Moxie against the Dark Neck's Hellion), so each death raises the bar until levelling,
+// which raises every stat, has caught up.
+int auto_statNeededFor(location loc)
+{
+	return loc.recommended_stat + auto_zoneDeaths(loc);
+}
+
 boolean auto_statsTooLowFor(location loc)
 {
-	return loc.recommended_stat > 0 && my_buffedstat(my_primestat()) < loc.recommended_stat;
+	return auto_statNeededFor(loc) > 0 && my_buffedstat(my_primestat()) < auto_statNeededFor(loc);
 }
 
 // Whether we can hurt the ghosts (physically immune monsters) in a zone. With prepare, also gets the MP for the spell or
@@ -169,20 +210,33 @@ string auto_bossNotReadyReason(monster boss)
 	return auto_wouldLoseReason(boss, boss.base_hp + ml, boss.base_defense + ml, my_maxhp());
 }
 
-// Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it
-// gets the monster's full HP and our maximum; during one (combat stage 2's retreat) what it has left and what we have.
-string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp)
+// Whether we can hit a monster with this defence: KoL's to-hit is our hit stat against it. Spells don't need it.
+boolean auto_canHit(int defence)
 {
 	boolean haveSpell = auto_have_skill($skill[Saucestorm]) || auto_have_skill($skill[Saucegeyser]);
-	if(!haveSpell && buffed_hit_stat() < defence && expected_damage(enemy) > 0)	// one that can't hurt us can't win
-	{
-		return "our hit stat (" + buffed_hit_stat() + ") is below its defence (" + defence + ")";
-	}
+	return haveSpell || buffed_hit_stat() >= defence;
+}
+
+// Our usual damage a round: the best of our attacks' estimates (auto_damageEstimate), -1 before enough fights to tell.
+int auto_damagePerRound()
+{
 	int perRound = -1;
 	foreach key in $strings[attack, Lunge Smack, Thrust-Smack, Lunging Thrust-Smack, Saucestorm, Saucegeyser]
 	{
 		perRound = max(perRound, auto_damageEstimate(key));
 	}
+	return perRound;
+}
+
+// Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it
+// gets the monster's full HP and our maximum; during one (combat stage 2's retreat) what it has left and what we have.
+string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp)
+{
+	if(!auto_canHit(defence) && expected_damage(enemy) > 0)	// one that can't hurt us can't win
+	{
+		return "our hit stat (" + buffed_hit_stat() + ") is below its defence (" + defence + ")";
+	}
+	int perRound = auto_damagePerRound();
 	if(perRound <= 0 || hp <= 0)
 	{
 		return "";		// no damage seen yet this ascension to judge by
@@ -205,7 +259,8 @@ boolean autoAdv(int num, location loc, string option)
 	}
 	if(auto_statsTooLowFor(loc))
 	{
-		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + loc.recommended_stat + " that " + loc + " recommends, so not going there yet.", "red");
+		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + auto_statNeededFor(loc) + " that " + loc + " wants ("
+			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for fights lost there), so not going there yet.", "red");
 		return false;
 	}
 	// the pre-adventure script aborts the run in a zone of ghosts we can't hurt, so turn it down here instead and let

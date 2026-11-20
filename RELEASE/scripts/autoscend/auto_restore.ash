@@ -2285,6 +2285,41 @@ int doRest()
 	return get_property("timesRested").to_int();
 }
 
+// HP a paid rest gives: the dwelling's (autoscend_restoration.txt) plus Bonus Resting HP. Paid rests are taken in the
+// dwelling (auto_restInDwelling), not the Chateau.
+float auto_restHp()
+{
+	__RestorationMetadata[string] known = __restoration_methods();
+	string dwelling = get_dwelling().to_string().to_lower_case();
+	float hp = (known contains dwelling) ? known[dwelling].hp_restored : known["big rock"].hp_restored;
+	return hp + numeric_modifier("Bonus Resting HP");
+}
+
+// Meat a hit point costs from the cheapest fixed-size HP restore an NPC sells us, 0 if none does.
+float auto_meatPerHp()
+{
+	float best = 0;
+	foreach name, m in __restoration_methods()
+	{
+		if(m.type != "item" || m.hp_restored <= 0 || m.restores_variable_hp == __RESTORE_ALL
+			|| m.restores_variable_hp == __RESTORE_HALF || m.restores_variable_hp == __RESTORE_SCALING)
+		{
+			continue;
+		}
+		item it = name.to_item();
+		if(it == $item[none] || !auto_is_valid(it) || npc_price(it) <= 0)
+		{
+			continue;
+		}
+		float per = npc_price(it) / m.hp_restored;
+		if(best == 0 || per < best)
+		{
+			best = per;
+		}
+	}
+	return best;
+}
+
 // The last resort for HP and for Beaten Up: rest in the campground, a turn once the free rests are gone. With nowhere
 // to rest, put up a tent first: a Barskin Tent (bar skin + wooden stakes) or the Newbiesport tent. A first life with
 // 11 Meat and no free rests aborted the day at 2 HP rather than spend one of its 20 turns resting.

@@ -12,6 +12,7 @@ void auto_beaten_handler()
 		return;
 	}
 	set_property("auto_beatenUpCount", get_property("auto_beatenUpCount").to_int() + 1);
+	auto_noteZoneDeath();
 	string loc = get_property("auto_beatenUpLocations");
 	if(loc != "") loc += ",";
 	loc += "day:" +my_daycount()+ ":level:" +my_level()+ ":place:" +my_location();
