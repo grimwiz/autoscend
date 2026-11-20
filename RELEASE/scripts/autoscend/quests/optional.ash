@@ -1770,10 +1770,9 @@ location auto_experienceZone()
 	return richest;
 }
 
-// HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: we can hit every monster we'd
-// meet, and its hits over the rounds our usual damage needs to kill it can't drop us. The more HP, the longer the fights
-// we can take, so better zones open as HP comes back (user, 2026-11-20). Each monster counts those hits, weighted by
-// how often it appears; winning initiative or a miss only makes it cheaper.
+// HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: every monster we'd meet dies
+// in one round to our usual damage, and no single hit of theirs can drop us. They may still hit once before we act, so
+// each counts its expected hit, weighted by how often it appears.
 float auto_lowHpFightCost(location loc)
 {
 	int perRound = auto_damagePerRound();
@@ -1789,17 +1788,12 @@ float auto_lowHpFightCost(location loc)
 		{
 			continue;
 		}
-		if(mob.boss || monster_hp(mob) <= 0 || !auto_canHit(monster_defense(mob)))
+		if(mob.boss || monster_hp(mob) <= 0 || monster_hp(mob) > perRound || !auto_canHit(monster_defense(mob))
+			|| expected_damage(mob) >= my_hp())
 		{
 			return -1;
 		}
-		int rounds = (monster_hp(mob) + perRound - 1) / perRound;
-		int taken = rounds * expected_damage(mob);
-		if(taken >= my_hp())
-		{
-			return -1;
-		}
-		cost += rate / 100.0 * taken;
+		cost += rate / 100.0 * expected_damage(mob);
 		anyFight = true;
 	}
 	return anyFight ? cost : -1;
