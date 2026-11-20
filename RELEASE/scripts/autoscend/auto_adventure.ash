@@ -208,20 +208,36 @@ int auto_damagePerRound()
 	return perRound;
 }
 
-// One-hit kills seen this life (user, 2026-11-20): auto_oneHitKills holds "monster id:1" for a monster our first attack
-// or damage skill killed and "monster id:0" for one that took more. The latest fight with each counts, since gear and
-// levels change our damage. 1, 0, or -1 when we haven't fought it that way yet.
-int auto_oneHitSeen(monster mob)
+// One-hit kills seen this life, by zone (user, 2026-11-20): auto_oneHitKills holds "location id:results", the results
+// a 1 for a fight our first attack or damage skill won and a 0 for one that took more, oldest first, the last 10. A zone
+// at the edge of our damage shows a low share, where one estimate across all fights would call it one hit.
+string auto_oneHitResults(location loc)
 {
 	foreach i, entry in split_string(get_property("auto_oneHitKills"), ",")
 	{
 		string[int] f = split_string(entry, ":");
-		if(count(f) == 2 && f[0].to_int() == mob.id)
+		if(count(f) == 2 && f[0].to_int() == loc.to_int())
 		{
-			return f[1].to_int();
+			return f[1];
 		}
 	}
-	return -1;
+	return "";
+}
+
+// The share of a zone's recorded fights that one hit won, or -1 with fewer than 3 to go on.
+float auto_zoneOneHitShare(location loc)
+{
+	string results = auto_oneHitResults(loc);
+	if(length(results) < 3)
+	{
+		return -1;
+	}
+	int ones = 0;
+	for(int i = 0; i < length(results); i++)
+	{
+		if(char_at(results, i) == "1") ones += 1;
+	}
+	return ones.to_float() / length(results);
 }
 
 // Notes the fight just won, if it was all attacks and damage skills: an instakill, a stun or an item says nothing about
@@ -235,7 +251,7 @@ void auto_noteOneHitKill()
 	}
 	set_property("_auto_oneHitNoted", started);
 	monster mob = last_monster();
-	if(!get_property("_lastCombatWon").to_boolean() || mob == $monster[none] || mob.boss)
+	if(!get_property("_lastCombatWon").to_boolean() || mob == $monster[none] || mob.boss || my_location() == $location[none])
 	{
 		return;
 	}
@@ -256,15 +272,21 @@ void auto_noteOneHitKill()
 	{
 		return;
 	}
+	location loc = my_location();
+	string results = auto_oneHitResults(loc) + (hits == 1 ? "1" : "0");
+	if(length(results) > 10)
+	{
+		results = substring(results, length(results) - 10);
+	}
 	string kept = "";
 	foreach i, entry in split_string(get_property("auto_oneHitKills"), ",")
 	{
-		if(entry != "" && split_string(entry, ":")[0].to_int() != mob.id)
+		if(entry != "" && split_string(entry, ":")[0].to_int() != loc.to_int())
 		{
 			kept += (kept == "" ? "" : ",") + entry;
 		}
 	}
-	set_property("auto_oneHitKills", kept + (kept == "" ? "" : ",") + mob.id + ":" + (hits == 1 ? 1 : 0));
+	set_property("auto_oneHitKills", kept + (kept == "" ? "" : ",") + loc.to_int() + ":" + results);
 }
 
 // Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it
