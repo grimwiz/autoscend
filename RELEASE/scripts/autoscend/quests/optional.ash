@@ -1771,17 +1771,14 @@ location auto_experienceZone()
 }
 
 // HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: its fights end in one hit, and
-// no single hit of theirs can drop us. One hit is what the zone has shown (at least 9 of its last 10 recorded fights,
-// auto_zoneOneHitShare) or, before 3 fights there, our usual damage against each monster's HP. They may still hit once
-// before we act, so each counts its expected hit, weighted by how often it appears.
+// no single hit of theirs can drop us. One hit is the better of what the zone has shown (at least 9 of its last 10
+// recorded fights, auto_zoneOneHitShare) and our usual damage now against each monster's HP: gear and stats only raise
+// our damage, so an old measurement mustn't hold a zone back once the estimate clears it (user, 2026-11-20). They may
+// still hit once before we act, so each counts its expected hit, weighted by how often it appears.
 float auto_lowHpFightCost(location loc)
 {
 	int perRound = auto_damagePerRound();
-	float share = auto_zoneOneHitShare(loc);
-	if(share >= 0 && share < 0.9)
-	{
-		return -1;
-	}
+	boolean measured = auto_zoneOneHitShare(loc) >= 0.9;
 	float cost = 0;
 	boolean anyFight = false;
 	foreach mob, rate in appearance_rates(loc, false)
@@ -1790,7 +1787,7 @@ float auto_lowHpFightCost(location loc)
 		{
 			continue;
 		}
-		boolean oneHit = share >= 0
+		boolean oneHit = measured
 			|| (perRound > 0 && monster_hp(mob) > 0 && monster_hp(mob) <= perRound && auto_canHit(monster_defense(mob)));
 		if(mob.boss || !oneHit || expected_damage(mob) >= my_hp())
 		{
