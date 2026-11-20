@@ -1770,9 +1770,10 @@ location auto_experienceZone()
 	return richest;
 }
 
-// HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: every monster we'd meet dies
-// in one round to our usual damage, and no single hit of theirs can drop us. They may still hit once before we act, so
-// each counts its expected hit, weighted by how often it appears.
+// HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: we can hit every monster we'd
+// meet, and its hits over the rounds our usual damage needs to kill it can't drop us. The more HP, the longer the fights
+// we can take, so better zones open as HP comes back (user, 2026-11-20). Each monster counts those hits, weighted by
+// how often it appears; winning initiative or a miss only makes it cheaper.
 float auto_lowHpFightCost(location loc)
 {
 	int perRound = auto_damagePerRound();
@@ -1788,12 +1789,17 @@ float auto_lowHpFightCost(location loc)
 		{
 			continue;
 		}
-		if(mob.boss || monster_hp(mob) <= 0 || monster_hp(mob) > perRound || !auto_canHit(monster_defense(mob))
-			|| expected_damage(mob) >= my_hp())
+		if(mob.boss || monster_hp(mob) <= 0 || !auto_canHit(monster_defense(mob)))
 		{
 			return -1;
 		}
-		cost += rate / 100.0 * expected_damage(mob);
+		int rounds = (monster_hp(mob) + perRound - 1) / perRound;
+		int taken = rounds * expected_damage(mob);
+		if(taken >= my_hp())
+		{
+			return -1;
+		}
+		cost += rate / 100.0 * taken;
 		anyFight = true;
 	}
 	return anyFight ? cost : -1;
@@ -1801,19 +1807,15 @@ float auto_lowHpFightCost(location loc)
 
 // HP recovery when the only HP left costs turns (user, 2026-11-20). With the free rests gone and no restore we can
 // afford, autoscend rests in the campground before an adventure: a turn for the dwelling's HP (auto_restHp: 9 in the
-// Newbiesport tent, up to 250 in the Getaway). A turn in a zone we can fight in at our HP with impunity
+// Newbiesport tent, up to 250 in the Getaway), so a 50 HP gap is six turns. A turn in a zone we can fight in at our HP with impunity
 // (auto_lowHpFightCost) instead earns its Meat, which buys HP at the cheapest price an NPC charges (auto_meatPerHp), and
 // stats, which resting doesn't. So when that Meat's HP, less the hits taken there, is at least a rest's, adventure there
 // without healing first. Stats come on top and aren't counted; a level gained refills HP as well.
 boolean auto_lowHpAdventure()
 {
-	if(my_hp() > my_maxhp() * 0.75 || have_effect($effect[Beaten Up]) > 0 || haveFreeRestAvailable())
+	if(my_hp() > my_maxhp() * 0.75 || have_effect($effect[Beaten Up]) > 0 || auto_healsWithoutTurns())
 	{
-		return false;		// the pre-adventure script won't heal (it does at 75%), or it heals for free
-	}
-	if(count(__maximize_restore_options(my_maxhp(), my_mp(), meatReserve(), true)) > 0)
-	{
-		return false;		// something affordable restores HP: no turn needed
+		return false;		// the pre-adventure script won't heal (it does at 75%), or it heals without a turn
 	}
 	float restHp = auto_restHp();
 	float meatPerHp = auto_meatPerHp();

@@ -2295,6 +2295,12 @@ float auto_restHp()
 	return hp + numeric_modifier("Bonus Resting HP");
 }
 
+// Whether HP can come back without spending turns: a free rest, or a restore we can afford.
+boolean auto_healsWithoutTurns()
+{
+	return haveFreeRestAvailable() || count(__maximize_restore_options(my_maxhp(), my_mp(), meatReserve(), true)) > 0;
+}
+
 // Meat a hit point costs from the cheapest fixed-size HP restore an NPC sells us, 0 if none does.
 float auto_meatPerHp()
 {

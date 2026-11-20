@@ -1668,6 +1668,7 @@ float auto_lowHpFightCost(location loc);
 boolean auto_lowHpAdventure();
 boolean auto_lowHpZoneNow(location place);
 float auto_restHp();
+boolean auto_healsWithoutTurns();
 float auto_meatPerHp();
 void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored

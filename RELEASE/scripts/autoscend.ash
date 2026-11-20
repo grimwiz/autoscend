@@ -1591,7 +1591,13 @@ void beatenUpResolution()
 		{
 			abort("We are getting beaten up too much, this is not good. Aborting.");
 		}
-		acquireHP();
+		// Healing to full with nothing affordable means paid rests: three gave a first life 27 HP of a 50 HP gap
+		// (user, 2026-11-20). Then rest once below, for the Beaten Up, and let auto_lowHpAdventure choose between
+		// resting and earning the HP in a zone we can fight in at our HP.
+		if(auto_healsWithoutTurns())
+		{
+			acquireHP();
+		}
 	}
 
 	if(have_effect($effect[Beaten Up]) > 0)
