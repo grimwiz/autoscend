@@ -649,7 +649,8 @@ __RestorationOptimization __calculate_objective_values(int hp_goal, int mp_goal,
 		float currency_available = 0.0;
 		item it = to_item(metadata.name);
 
-		boolean mall_buyable = can_interact() && is_tradeable(it);
+		// retrieve_item buys from the mall only with autoSatisfyWithMall on: without it, a mall item is not on offer
+		boolean mall_buyable = can_interact() && is_tradeable(it) && get_property("autoSatisfyWithMall").to_boolean();
 		if(mall_buyable || npc_price(it) > 0)
 		{
 			price_per = get_value("meat_per_use");
@@ -942,7 +943,10 @@ __RestorationOptimization __calculate_objective_values(int hp_goal, int mp_goal,
 			if (i.dailyusesleft == 0) {
 				return false;
 			}
-			boolean mall_buyable = can_interact() && auto_mall_price(i) > 0;
+			// retrieve_item buys from the mall only with autoSatisfyWithMall on. A never-ascended account can interact, and
+			// with the setting off it chose a Camp Scout pup tent (106 Meat in the mall) every time, failed to get one
+			// ("You need 1 more"), and went back in at 13 HP.
+			boolean mall_buyable = can_interact() && auto_mall_price(i) > 0 && get_property("autoSatisfyWithMall").to_boolean();
 			boolean npc_meat_buyable = npc_price(i) > 0;
 			boolean coinmaster_buyable = i.seller != $coinmaster[none] && is_accessible(i.seller) && get_property("autoSatisfyWithCoinmasters").to_boolean();
 			
