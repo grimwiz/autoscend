@@ -1567,7 +1567,6 @@ int auto_dropSaleValue(item it);
 float auto_zoneExpScore(location loc);
 float auto_zoneMeatPerTurn(location loc);
 location auto_experienceZone();
-item auto_watchedItemDropped();
 boolean LX_experienceZoneInsteadOfPowerlevel();
 boolean startMeatsmithSubQuest();
 boolean finishMeatsmithSubQuest();
