@@ -2,46 +2,26 @@
 // it will (should?) handle the complete adventure from start to finish regardless of
 // how many choices or combats it encounters (this is mafia's adv1 behaviour)
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
-// Deaths in fights this life, by zone (auto_zoneDeaths: "location id:deaths" pairs), noted when a fight leaves us
-// Beaten Up. A non-combat that beats us up on purpose, like the Palindome's Poetic Justice, isn't a lost fight.
+// Times we were beaten up in a zone this life, from autoscend's own record of them (auto_beatenUpLocations:
+// "day:N:level:N:place:<zone>" entries, cleared with the ascension's settings).
 int auto_zoneDeaths(location loc)
 {
-	foreach i, entry in split_string(get_property("auto_zoneDeaths"), ",")
+	int deaths = 0;
+	foreach i, entry in split_string(get_property("auto_beatenUpLocations"), ",")
 	{
-		string[int] f = split_string(entry, ":");
-		if(count(f) == 2 && f[0].to_int() == loc.to_int())
+		int at = entry.index_of("place:");
+		if(at >= 0 && entry.substring(at + 6) == loc.to_string())
 		{
-			return f[1].to_int();
+			deaths += 1;
 		}
 	}
-	return 0;
+	return deaths;
 }
 
-void auto_noteZoneDeath()
-{
-	if(get_property("lastEncounter").to_monster() == $monster[none] || my_location() == $location[none])
-	{
-		return;
-	}
-	string kept = "";
-	foreach i, entry in split_string(get_property("auto_zoneDeaths"), ",")
-	{
-		string[int] f = split_string(entry, ":");
-		if(count(f) == 2 && f[0].to_int() != my_location().to_int())
-		{
-			kept += (kept == "" ? "" : ",") + entry;
-		}
-	}
-	int deaths = auto_zoneDeaths(my_location()) + 1;
-	set_property("auto_zoneDeaths", kept + (kept == "" ? "" : ",") + my_location().to_int() + ":" + deaths);
-	auto_log_info("Lost a fight in " + my_location() + " (" + deaths + " this life): it now wants " + auto_statNeededFor(my_location())
-		+ " " + my_primestat() + " before we go back.", "blue");
-}
-
-// The main stat a zone wants before we go in: KoL's recommendation (which it doesn't enforce) plus one for every fight
-// lost there this life (user, 2026-11-20). The recommendation follows the main stat, but what loses fights is often
-// another one (a Seal Clubber's Moxie against the Dark Neck's Hellion), so each death raises the bar until levelling,
-// which raises every stat, has caught up.
+// The main stat a zone wants before we go in: KoL's recommendation (which it doesn't enforce) plus one for every time we
+// were beaten up there this life (user, 2026-11-20). The recommendation follows the main stat, but what loses fights is
+// often another one (a Seal Clubber's Moxie against the Dark Neck's Hellion), so each death raises the bar until
+// levelling, which raises every stat, has caught up.
 int auto_statNeededFor(location loc)
 {
 	return loc.recommended_stat + auto_zoneDeaths(loc);
@@ -260,7 +240,7 @@ boolean autoAdv(int num, location loc, string option)
 	if(auto_statsTooLowFor(loc))
 	{
 		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + auto_statNeededFor(loc) + " that " + loc + " wants ("
-			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for fights lost there), so not going there yet.", "red");
+			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for times beaten up there), so not going there yet.", "red");
 		return false;
 	}
 	// the pre-adventure script aborts the run in a zone of ghosts we can't hurt, so turn it down here instead and let

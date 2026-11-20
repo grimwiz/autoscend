@@ -1660,7 +1660,6 @@ boolean auto_canDamageGhosts(location place, boolean prepare);
 string auto_bossNotReadyReason(monster boss);
 string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp);
 int auto_zoneDeaths(location loc);
-void auto_noteZoneDeath();
 int auto_statNeededFor(location loc);
 boolean auto_canHit(int defence);
 int auto_damagePerRound();
