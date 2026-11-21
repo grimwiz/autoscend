@@ -1848,6 +1848,33 @@ boolean auto_lowHpAdventure()
 	return auto_fallbackAdventure(best);
 }
 
+// A farm target the player's script marks as coming first (auto_farmFirst, with auto_farmZone and auto_farmItem): autokol
+// sets it for the parts of a better dwelling (user, 2026-11-21: "Farming house instead of resting seems the priority, as
+// otherwise the rest is only half efficient"). It runs ahead of the quests. Where no single hit can drop us and every
+// fight ends in one hit (auto_lowHpFightCost), it goes in without healing first, which is what the farming saves.
+boolean auto_farmFirstAdventure()
+{
+	if(!get_property("auto_farmFirst").to_boolean())
+	{
+		return false;
+	}
+	location zone = get_property("auto_farmZone").to_location();
+	item want = get_property("auto_farmItem").to_item();
+	if(zone == $location[none] || want == $item[none] || available_amount(want) > 0 || !zone_isAvailable(zone)
+		|| auto_statsTooLowFor(zone) || auto_zoneRefusedToday(zone) || have_effect($effect[Beaten Up]) > 0)
+	{
+		return false;
+	}
+	boolean noHeal = auto_lowHpFightCost(zone) >= 0;
+	auto_log_info("Farming " + want + " in " + zone + " before the quests (the player's script puts it first)"
+		+ (noHeal && my_hp() <= my_maxhp() * 0.75 ? ", without healing: nothing there can hurt us much" : "") + ".", "blue");
+	if(noHeal)
+	{
+		set_property("_auto_lowHpZone", zone + "@" + my_turncount());
+	}
+	return auto_fallbackAdventure(zone);
+}
+
 // The zone auto_lowHpAdventure chose for this turn, which the pre-adventure script goes into without healing.
 boolean auto_lowHpZoneNow(location place)
 {

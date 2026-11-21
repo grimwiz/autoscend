@@ -1672,6 +1672,7 @@ void auto_noteOneHitKill();
 boolean[location] auto_ordinaryZones();
 float auto_lowHpFightCost(location loc);
 boolean auto_lowHpAdventure();
+boolean auto_farmFirstAdventure();
 boolean auto_lowHpZoneNow(location place);
 float auto_restHp();
 boolean auto_healsWithoutTurns();
