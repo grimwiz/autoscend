@@ -186,6 +186,7 @@ void initializeSettings() {
 	set_property("auto_beatenUpCount", 0);
 	set_property("auto_beatenUpLastAdv", false);
 	remove_property("auto_beatenUpLocations");
+	remove_property("auto_restLocations");
 	remove_property("auto_oneHitKills");
 	set_property("auto_getBeehive", false);
 	set_property("auto_bruteForcePalindome", false);

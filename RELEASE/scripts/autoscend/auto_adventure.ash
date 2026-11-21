@@ -4,18 +4,38 @@
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
 // Times we were beaten up in a zone this life, from autoscend's own record of them (auto_beatenUpLocations:
 // "day:N:level:N:place:<zone>" entries, cleared with the ascension's settings).
-int auto_zoneDeaths(location loc)
+// Entries in a "day:N:level:N:place:<zone>" list property that name this zone.
+int auto_zoneEntries(string property, location loc)
 {
-	int deaths = 0;
-	foreach i, entry in split_string(get_property("auto_beatenUpLocations"), ",")
+	int found = 0;
+	foreach i, entry in split_string(get_property(property), ",")
 	{
 		int at = entry.index_of("place:");
 		if(at >= 0 && entry.substring(at + 6) == loc.to_string())
 		{
-			deaths += 1;
+			found += 1;
 		}
 	}
-	return deaths;
+	return found;
+}
+
+int auto_zoneDeaths(location loc)
+{
+	return auto_zoneEntries("auto_beatenUpLocations", loc);
+}
+
+// Rests taken for HP when nothing else would restore it (auto_restInDwelling), charged to the zone we were in or about
+// to go into (auto_restLocations, same format, cleared with the ascension's settings).
+int auto_zoneRests(location loc)
+{
+	return auto_zoneEntries("auto_restLocations", loc);
+}
+
+// One point of the zone's stat bar for every 5 of those rests (user, 2026-11-21): a zone whose fights cost more HP
+// than we can get back without resting is too hard for now, even when nothing has beaten us up there.
+int auto_zoneRestBump(location loc)
+{
+	return auto_zoneRests(loc) / 5;
 }
 
 // The main stat a zone wants before we go in: KoL's recommendation (which it doesn't enforce) plus one for every time we
@@ -24,7 +44,7 @@ int auto_zoneDeaths(location loc)
 // levelling, which raises every stat, has caught up.
 int auto_statNeededFor(location loc)
 {
-	return loc.recommended_stat + auto_zoneDeaths(loc);
+	return loc.recommended_stat + auto_zoneDeaths(loc) + auto_zoneRestBump(loc);
 }
 
 boolean auto_statsTooLowFor(location loc)
@@ -321,7 +341,8 @@ boolean autoAdv(int num, location loc, string option)
 	if(auto_statsTooLowFor(loc))
 	{
 		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + auto_statNeededFor(loc) + " that " + loc + " wants ("
-			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for times beaten up there), so not going there yet.", "red");
+			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for times beaten up there and "
+			+ auto_zoneRestBump(loc) + " for " + auto_zoneRests(loc) + " rests for HP there), so not going there yet.", "red");
 		return false;
 	}
 	// the pre-adventure script aborts the run in a zone of ghosts we can't hurt, so turn it down here instead and let

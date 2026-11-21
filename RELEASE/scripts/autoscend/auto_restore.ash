@@ -2360,7 +2360,24 @@ boolean auto_restInDwelling(string why)
 	int rested = get_property("timesRested").to_int();
 	auto_log_info(why + ", so resting.", "blue");
 	doRest();
-	return get_property("timesRested").to_int() > rested;
+	if(get_property("timesRested").to_int() <= rested)
+	{
+		return false;
+	}
+	// charge the rest to the zone, which raises its stat bar every 5 rests (auto_zoneRestBump)
+	location loc = my_location();
+	if(loc != $location[none])
+	{
+		string rests = get_property("auto_restLocations");
+		if(rests != "") rests += ",";
+		set_property("auto_restLocations", rests + "day:" + my_daycount() + ":level:" + my_level() + ":place:" + loc);
+		if(auto_zoneRests(loc) % 5 == 0)
+		{
+			auto_log_warning(auto_zoneRests(loc) + " rests for HP at " + loc + ", so it now wants " + auto_statNeededFor(loc)
+				+ " " + my_primestat() + " (we have " + my_buffedstat(my_primestat()) + ").", "red");
+		}
+	}
+	return true;
 }
 
 boolean haveFreeRestAvailable(){
