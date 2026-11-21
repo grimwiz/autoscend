@@ -1340,11 +1340,44 @@ string[string] auto_damageSeenMap()
 	return seen;
 }
 
+// Two of the monster's hits in a row with no damage from us in between, by attack, skill or anything else (running away
+// included), count as a death in the zone (user, 2026-11-21): the Defiled Alcove's zombies had more defence than our hit
+// stat, so autogrim tried to run every round, dealt 0 and lost 25-28 HP a hit, and nothing raised the zone's bar.
+// _auto_zeroDamageStreak counts the hits since we last did damage; _auto_zeroDamageFight marks the fight for the
+// post-adventure script (auto_zeroDamageHandler), which records it unless we were beaten up as well.
+void auto_zeroDamageObserve(int round, int monsterHpBefore)
+{
+	if(round == 0)
+	{
+		set_property("_auto_zeroDamageStreak", 0);
+		remove_property("_auto_zeroDamageFight");
+		return;
+	}
+	int taken = get_property("auto_combatHP").to_int() - my_hp();
+	int dealt = monsterHpBefore > 0 ? max(0, monsterHpBefore - monster_hp()) : 0;
+	int streak = get_property("_auto_zeroDamageStreak").to_int();
+	if(dealt > 0)
+	{
+		streak = 0;
+	}
+	else if(taken > 0)
+	{
+		streak += 1;
+	}
+	set_property("_auto_zeroDamageStreak", streak);
+	if(streak >= 2 && !get_property("_auto_zeroDamageFight").to_boolean())
+	{
+		set_property("_auto_zeroDamageFight", true);
+		auto_log_warning("Hit twice in a row by " + last_monster() + " without hurting it: that counts as a death in " + my_location() + ".", "red");
+	}
+}
+
 void auto_damageObserve(int round)
 {
 	string key = get_property("_auto_combatTracker_lastAction");
 	int before = get_property("_auto_combatTracker_lastMonsterHP").to_int();
 	remove_property("_auto_combatTracker_lastAction");
+	auto_zeroDamageObserve(round, before);
 	if(round == 0 || key == "" || before <= 0)
 	{
 		return;

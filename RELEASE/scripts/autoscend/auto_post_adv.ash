@@ -1,5 +1,26 @@
 import<autoscend.ash>
 
+// A fight where the monster hit us twice in a row while we did it no damage (auto_zeroDamageObserve) counts as a death in
+// the zone, whether we escaped or not: it goes in auto_beatenUpLocations, which raises the zone's stat bar
+// (auto_statNeededFor). Being beaten up there as well records it once, through auto_beaten_handler.
+void auto_zeroDamageHandler()
+{
+	if(!get_property("_auto_zeroDamageFight").to_boolean())
+	{
+		return;
+	}
+	remove_property("_auto_zeroDamageFight");
+	if(have_effect($effect[Beaten Up]) > 0 || my_location() == $location[none])
+	{
+		return;
+	}
+	string loc = get_property("auto_beatenUpLocations");
+	if(loc != "") loc += ",";
+	set_property("auto_beatenUpLocations", loc + "day:" + my_daycount() + ":level:" + my_level() + ":nodamage:place:" + my_location());
+	auto_log_warning(my_location() + " now wants " + auto_statNeededFor(my_location()) + " " + my_primestat() + " (we have "
+		+ my_buffedstat(my_primestat()) + "): hit twice without hurting the monster counts as a death there.", "red");
+}
+
 void auto_beaten_handler()
 {
 	if(have_effect($effect[Beaten Up]) == 0)
@@ -1099,6 +1120,7 @@ boolean auto_post_adventure()
 	}
 
 	auto_beaten_handler();
+	auto_zeroDamageHandler();
 
 	if (get_property("lastEncounter") == "Welcome to the Great Overlook Lodge")
 	{

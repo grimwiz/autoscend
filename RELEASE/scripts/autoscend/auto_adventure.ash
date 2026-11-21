@@ -3,7 +3,8 @@
 // how many choices or combats it encounters (this is mafia's adv1 behaviour)
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
 // Times we were beaten up in a zone this life, from autoscend's own record of them (auto_beatenUpLocations:
-// "day:N:level:N:place:<zone>" entries, cleared with the ascension's settings).
+// "day:N:level:N:place:<zone>" entries, cleared with the ascension's settings). Fights where the monster hit us twice in
+// a row without us hurting it count too ("day:N:level:N:nodamage:place:<zone>", auto_zeroDamageHandler).
 // Entries in a "day:N:level:N:place:<zone>" list property that name this zone.
 int auto_zoneEntries(string property, location loc)
 {
@@ -341,7 +342,7 @@ boolean autoAdv(int num, location loc, string option)
 	if(auto_statsTooLowFor(loc))
 	{
 		auto_log_warning("Our " + my_primestat() + " (" + my_buffedstat(my_primestat()) + ") is below the " + auto_statNeededFor(loc) + " that " + loc + " wants ("
-			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for times beaten up there and "
+			+ loc.recommended_stat + " recommended, plus " + auto_zoneDeaths(loc) + " for times beaten up or hit twice without hurting it there, and "
 			+ auto_zoneRestBump(loc) + " for " + auto_zoneRests(loc) + " rests for HP there), so not going there yet.", "red");
 		return false;
 	}
