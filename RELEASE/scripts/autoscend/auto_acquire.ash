@@ -269,15 +269,14 @@ int auto_pullPriceCap(item it)
 	return min(limit, to_int(turnsSaved[it] * turnValue));
 }
 
-// Once Ronin ends (turn 1000, or the King freed): offer the Loathing items, replace the bartender and buy the shopping
-// list. Emptying Hagnk's moved to autokol (autokol_emptyStorageWhenFree).
+// Once Ronin ends (turn 1000, or the King freed): replace the bartender and buy the shopping list. Emptying Hagnk's
+// moved to autokol (autokol_emptyStorageWhenFree), and so did smithing the Clothing of Loathing (autokol's upgrade check).
 void auto_outOfRoninTasks()
 {
 	if(!can_interact())
 	{
 		return;
 	}
-	auto_offerLoathingItems();
 	auto_replaceBartender();
 	auto_buyShoppingList();
 }
@@ -338,133 +337,6 @@ void auto_replaceBartender()
 	else
 	{
 		auto_log_warning("Couldn't make a bartender-in-the-box to replace the one this run used.", "red");
-	}
-}
-
-// The Clothing of Loathing is smithed from one Hatred piece (Yog-Urt) and one Violence piece (Shub-Jigguwatt), each
-// dropped for one class only, so the halves pile up in Hagnk's over many ascensions. KoLmafia lists these recipes as
-// MANUAL, and "currently ignores MANUAL recipes entirely": create() can't make them and get_ingredients() is empty.
-// So the pairs are written out here and smithed on the smithing page (needs a tenderizing hammer in inventory).
-int[item] auto_loathingHalves(item it)
-{
-	item[item] hatred = {
-		$item[Belt of Loathing] : $item[Girdle of Hatred],
-		$item[Goggles of Loathing] : $item[Lens of Hatred],
-		$item[Jeans of Loathing] : $item[Pantaloons of Hatred],
-		$item[Scepter of Loathing] : $item[Cold Stone of Hatred],
-		$item[Stick-Knife of Loathing] : $item[Staff of Simmering Hatred],
-		$item[Treads of Loathing] : $item[Fuzzy Slippers of Hatred]
-	};
-	item[item] violence = {
-		$item[Belt of Loathing] : $item[Novelty Belt Buckle of Violence],
-		$item[Goggles of Loathing] : $item[Lens of Violence],
-		$item[Jeans of Loathing] : $item[Jodhpurs of Violence],
-		$item[Scepter of Loathing] : $item[Brand of Violence],
-		$item[Stick-Knife of Loathing] : $item[Pigsticker of Violence],
-		$item[Treads of Loathing] : $item[Ass-Stompers of Violence]
-	};
-	int[item] halves;
-	if(hatred contains it)
-	{
-		halves[hatred[it]] = 1;
-		halves[violence[it]] = 1;
-	}
-	return halves;
-}
-
-boolean auto_smithLoathing(item it)
-{
-	int[item] halves = auto_loathingHalves(it);
-	if(count(halves) != 2 || item_amount($item[tenderizing hammer]) == 0)
-	{
-		return false;
-	}
-	string url = "craft.php?action=craft&mode=smith&pwd&qty=1";
-	string ab = "a";
-	foreach half in halves
-	{
-		if(item_amount(half) == 0)
-		{
-			return false;
-		}
-		url += "&" + ab + "=" + half.to_int();
-		ab = "b";
-	}
-	int before = item_amount(it);
-	visit_url(url);
-	return item_amount(it) > before;
-}
-
-// The parts of something craftable: KoLmafia's recipe, or a Loathing pair once there is a hammer to smith it with.
-int[item] auto_craftParts(item it)
-{
-	int[item] parts = get_ingredients(it);
-	if(count(parts) == 0 && item_amount($item[tenderizing hammer]) > 0)
-	{
-		parts = auto_loathingHalves(it);
-	}
-	return parts;
-}
-
-boolean auto_craftOne(item it)
-{
-	if(count(get_ingredients(it)) == 0 && count(auto_loathingHalves(it)) > 0)
-	{
-		return auto_smithLoathing(it);
-	}
-	return create(1, it);
-}
-
-// Once Hagnk's is emptied, ask (once per ascension) whether to make each Loathing item that isn't owned yet and whose
-// two halves are both in hand.
-void auto_offerLoathingItems()
-{
-	if(get_property("auto_loathingOffered").to_int() == my_ascensions())
-	{
-		return;
-	}
-	set_property("auto_loathingOffered", my_ascensions());
-	foreach it in $items[Belt of Loathing, Goggles of Loathing, Jeans of Loathing, Scepter of Loathing, Stick-Knife of Loathing, Treads of Loathing]
-	{
-		if(available_amount(it) + storage_amount(it) + display_amount(it) > 0)
-		{
-			continue;
-		}
-		string halves = "";
-		boolean haveBoth = true;
-		foreach half in auto_loathingHalves(it)
-		{
-			halves += (halves == "" ? "" : " + ") + half;
-			haveBoth = haveBoth && item_amount(half) > 0;
-		}
-		if(!haveBoth)
-		{
-			continue;
-		}
-		if(item_amount($item[tenderizing hammer]) == 0)
-		{
-			auto_log_info("You can make " + it + " from " + halves + ", but smithing it needs a tenderizing hammer in inventory.", "blue");
-			continue;
-		}
-		if(!user_confirm("You have " + halves + ". Make " + it + " from them (this uses both up)? Will default to 'No' in 60 seconds.", 60000, false))
-		{
-			string cmd = "ash visit_url(\"craft.php?action=craft&mode=smith&pwd&qty=1";
-			string ab = "a";
-			foreach half in auto_loathingHalves(it)
-			{
-				cmd += "&" + ab + "=" + half.to_int();
-				ab = "b";
-			}
-			auto_log_info("Not making " + it + " (from " + halves + "). To make it later, with a tenderizing hammer in inventory: " + cmd + "\")", "blue");
-		}
-		else if(auto_smithLoathing(it))
-		{
-			auto_log_info("Made " + it + ".", "blue");
-		}
-		else
-		{
-			auto_log_warning("Smithing " + it + " didn't work; it can be made on the smithing page (needs an adventure and a tenderizing hammer).", "red");
-		}
 	}
 }
 
@@ -1428,7 +1300,7 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 		{
 			continue;
 		}
-		int[item] parts = auto_craftParts(it);
+		int[item] parts = get_ingredients(it);
 		if(count(parts) == 0)
 		{
 			continue;
@@ -1488,8 +1360,7 @@ item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, flo
 			worn = auto_statementScore(statement, equipped_item(sl));
 		}
 		float gain = auto_statementScore(statement, it) - worn;
-		// smithing a Loathing pair is a manual recipe KoLmafia can't time: count it as one adventure
-		int turns = whole ? 0 : (count(get_ingredients(it)) > 0 ? max(0, creatable_turns(it, 1, true)) : 1);
+		int turns = whole ? 0 : max(0, creatable_turns(it, 1, true));
 		float net = gain * pointMeat - pulls * pullValue - turns * turnValue - used;
 		if(net > bestNet)
 		{
@@ -1514,7 +1385,7 @@ boolean auto_makeStorageCraft(item it)
 	}
 	else
 	{
-		foreach part, qty in auto_craftParts(it)
+		foreach part, qty in get_ingredients(it)
 		{
 			int missing = max(0, qty - item_amount(part));
 			if(missing > 0 && !take_storage(missing, part))
@@ -1522,7 +1393,7 @@ boolean auto_makeStorageCraft(item it)
 				return false;
 			}
 		}
-		if(!auto_craftOne(it))
+		if(!create(1, it))
 		{
 			return false;
 		}
@@ -1805,7 +1676,7 @@ void auto_makeOwnedGear(string statement)
 			return;
 		}
 		string parts = "";
-		foreach part, qty in auto_craftParts(it)
+		foreach part, qty in get_ingredients(it)
 		{
 			parts += (parts == "" ? "" : " + ") + (qty > 1 ? qty + " " : "") + part;
 		}
@@ -1918,7 +1789,7 @@ void auto_levelUpPull()
 		set_property("autoSatisfyWithMall", mallSetting);
 	}
 	// Gear that has to be made from parts in Hagnk's competes for the level's pick on Meat net of its pulls and crafting
-	// turns (a pair of Loathing halves costs two pulls), against the best single pull's net.
+	// turns (two parts in Hagnk's cost two pulls), against the best single pull's net.
 	float pullValue = get_property("auto_pullValue") == "" ? 1000.0 : get_property("auto_pullValue").to_float();
 	float turnValue = auto_turnValue();
 	float pointMeat = auto_scorePointMeat();
@@ -1936,7 +1807,7 @@ void auto_levelUpPull()
 		if(storage_amount(craft) == 0)
 		{
 			string parts = "";
-			foreach part in auto_craftParts(craft)
+			foreach part in get_ingredients(craft)
 			{
 				parts += (parts == "" ? "" : " + ") + part;
 			}
