@@ -1592,7 +1592,7 @@ boolean auto_craftInsteadOfPull(item it, int howMany);
 int auto_craftBudget();
 boolean auto_pieceMakeable(item it);
 boolean auto_finishWithinBudget(item it);
-void auto_emptyStorageWhenFree();
+void auto_outOfRoninTasks();
 void auto_offerLoathingItems();
 void auto_bartenderHandle();
 void auto_replaceBartender();

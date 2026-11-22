@@ -1960,7 +1960,7 @@ boolean doTasks()
 	}
 	if(inAftercore())
 	{
-		auto_emptyStorageWhenFree();	// the King being freed is what usually ends Ronin
+		auto_outOfRoninTasks();	// the King being freed is what usually ends Ronin
 		auto_log_warning("I am in aftercore", "red");
 		return false;
 	}
@@ -2043,7 +2043,7 @@ boolean doTasks()
 
 	finishBuildingSmutOrcBridge();
 	councilMaintenance();
-	auto_emptyStorageWhenFree();
+	auto_outOfRoninTasks();
 	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl or war trophy beats many pulls of Meat
 	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear
 	auto_familiarEquipPull();	// once a day: a better familiar item from Hagnk's, if beating what's worn pays for the pull
@@ -2352,7 +2352,7 @@ void auto_begin()
 
 	if(inAftercore())
 	{
-		auto_emptyStorageWhenFree();	// each part once per ascension; doTasks stops before it when overdrunk
+		auto_outOfRoninTasks();	// doTasks stops before it when overdrunk
 	}
 	if(doBedtime())
 	{
