@@ -2707,8 +2707,12 @@ int auto_getConsumablePriceLimit()
 	return min(autoscend_max,mafia_max);
 }
 
-// What pulling a consumable costs, in adventures at auto_turnValue: auto_pullValue (1,000 Meat) for the pull, plus
-// the mall price when it has to be bought into Hagnk's first. When the stomach and liver left outnumber the pulls
+// What pulling a consumable costs, in adventures: the gear pull it displaces (auto_pullValueMeat) at the 2,000 Meat a
+// turn that value was tuned against (auto_pullTurnValue), plus the mall price at auto_turnValue when it has to be
+// bought into Hagnk's first. The pull's own value is gear, not Meat on hand: dividing it by auto_turnValue once that
+// became a tenth of the Meat on hand (32c1a352) charged run 109's day-1 diet about 3.1 adventures a pull (vodka
+// cranberry sauce: 16 adventures scored 12.94) where run 107's was 1.6 (gnocchetti: 27.5 scored 25.92), and run 109
+// planned 4 pulled consumables on day 1 against run 107's 8. When the stomach and liver left outnumber the pulls
 // left, a pull is scarcer than that: it should fill space / pulls points (capped at 5), and each point it leaves
 // for unpulled food costs about auto_pullAdvPremium adventures (2: pulled food and drink give 4.5-5 a point, the
 // tavern and cafe 2.5-3.5). Run 100 day 3 had 17 pulls for 34 points, spent ten on 1-point items worth 4-5
@@ -2730,6 +2734,7 @@ float auto_pullValueMeat()
 float auto_pullCostAdventures(item it)
 {
 	float turnValue = auto_turnValue();
+	float pullTurnValue = get_property("auto_pullTurnValue") == "" ? 2000.0 : get_property("auto_pullTurnValue").to_float();
 	float pullValue = auto_pullValueMeat();
 	float premium = get_property("auto_pullAdvPremium") == "" ? 2.0 : get_property("auto_pullAdvPremium").to_float();
 	float price = storage_amount(it) > 0 ? 0.0 : max(0, auto_mall_price(it));
@@ -2740,5 +2745,5 @@ float auto_pullCostAdventures(item it)
 		float shouldFill = min(5.0, space.to_float() / pulls_remaining());
 		scarcity = premium * max(0.0, shouldFill - it.fullness - it.inebriety);
 	}
-	return (pullValue + price) / max(1.0, turnValue) + scarcity;
+	return pullValue / max(1.0, pullTurnValue) + price / max(1.0, turnValue) + scarcity;
 }
