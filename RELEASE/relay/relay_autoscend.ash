@@ -367,9 +367,6 @@ void main()
 	writeln("<h2>Beaten Up</h2>");
 	writeln(get_property("auto_beatenUpLocations"));
 
-	writeln("<h2>Rests for HP</h2>");
-	writeln(get_property("auto_restLocations"));
-
 	writeln("<h2>Forced Noncombats</h2>");
 	generateTrackingDataSplitByNewLine("auto_forcedNC");
 

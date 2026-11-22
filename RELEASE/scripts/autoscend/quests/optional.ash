@@ -1580,43 +1580,12 @@ boolean auto_sideQuestHandIns()
 	return done;
 }
 
-// autoscend can think a zone is open when KoL says "You can't get to that area" (the Haunted Conservatory before
-// Spookyraven Manor is unlocked). Both choosers below remember such a zone for the day and pick another, rather than
-// letting the failed adventure end the day with turns left.
-boolean auto_zoneRefusedToday(location loc)
-{
-	foreach i, name in get_property("_auto_refusedZones").split_string(",")
-	{
-		if(name == loc.to_string())
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-// The fallbacks (side quests, a farm target, the experience zone) choose their zone on purpose, so many turns there aren't
-// a sign of being stuck: they note it, with the turn, for adventureFailureHandler (user, 2026-11-19).
+// The fallbacks (side quests, HP farming) choose their zone on purpose, so many turns there aren't a sign of being
+// stuck: they note it, with the turn, for adventureFailureHandler (user, 2026-11-19).
 boolean auto_fallbackAdventure(location loc)
 {
 	set_property("_auto_fallbackZone", loc + "@" + my_turncount());
-	return auto_adventureOrRemember(loc);
-}
-
-boolean auto_adventureOrRemember(location loc)
-{
-	if(autoAdv(loc))
-	{
-		return true;
-	}
-	if(auto_zoneRefusedToday(loc))
-	{
-		return false;	// already remembered: let the caller give up
-	}
-	string refused = get_property("_auto_refusedZones");
-	auto_log_info("Couldn't adventure in " + loc + ", so leaving it alone for today.", "blue");
-	set_property("_auto_refusedZones", refused == "" ? loc.to_string() : refused + "," + loc);
-	return true;		// no turn spent, but the next loop picks another zone
+	return autoAdv(loc);
 }
 
 boolean LX_sideQuestsInsteadOfPowerlevel()
@@ -1631,7 +1600,7 @@ boolean LX_sideQuestsInsteadOfPowerlevel()
 		The Haunted Conservatory, Madness Bakery, The Degrassi Knoll Garage]
 	{
 		int goals = auto_sideQuestGoals(loc);
-		if(goals == 0 || !zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
+		if(goals == 0 || !zone_isAvailable(loc) || auto_statsTooLowFor(loc))
 		{
 			continue;
 		}
@@ -1677,23 +1646,9 @@ int auto_dropSaleValue(item it)
 	return sell;
 }
 
-// Per turn in a zone, from KoL's steady-state appearance rates (non-combats count as nothing; not the monster queue,
-// whose recent fights would make a zone we just left look worse than it is over a day): the monsters' attack, which stat
-// gains follow, so zones can be compared for experience; and what they're worth in Meat, their base Meat with our Meat
-// drop bonus plus their ordinary drops (with our item drop bonus) at what they'd sell for.
-float auto_zoneExpScore(location loc)
-{
-	float score = 0;
-	foreach mob, rate in appearance_rates(loc, false)
-	{
-		if(mob != $monster[none] && rate > 0)
-		{
-			score += rate / 100.0 * monster_attack(mob);
-		}
-	}
-	return score;
-}
-
+// What a turn in a zone is worth in Meat, from KoL's steady-state appearance rates (non-combats count as nothing):
+// the monsters' base Meat with our Meat drop bonus plus their ordinary drops (with our item drop bonus) at what
+// they'd sell for. HP farming (auto_lowHpAdventure) buys HP with it.
 float auto_zoneMeatPerTurn(location loc)
 {
 	float meatBonus = 1.0 + numeric_modifier("Meat Drop") / 100.0;
@@ -1719,55 +1674,12 @@ float auto_zoneMeatPerTurn(location loc)
 	return value;
 }
 
-// The zone the experience fallback picks, apart from a farm target: the toughest ordinary zone we can enter, or, short
-// of Meat (below what's kept for permanent purchases, auto_permanentReserve), the zone with the most Meat a turn of those
-// whose experience is within 10% of the best, so saving costs no experience. autokol compares farm zones with it.
 // The ordinary zones the fallbacks choose between: always open once unlocked, no quest of their own to spoil.
 boolean[location] auto_ordinaryZones()
 {
 	return $locations[The Outskirts of Cobb's Knob, The Haunted Pantry, The Sleazy Back Alley, The Skeleton Store,
 		The Unquiet Garves, Madness Bakery, The Degrassi Knoll Garage, The Bat Hole Entrance, The Haunted Conservatory,
 		Cobb's Knob Treasury, Cobb's Knob Barracks, The Beanbat Chamber, The Batrat and Ratbat Burrow];
-}
-
-location auto_experienceZone()
-{
-	location best = $location[none];
-	location[int] open;
-	foreach loc in auto_ordinaryZones()
-	{
-		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
-		{
-			continue;
-		}
-		open[count(open)] = loc;
-		if(best == $location[none] || loc.recommended_stat > best.recommended_stat
-			|| (loc.recommended_stat == best.recommended_stat && loc.to_string() < best.to_string()))
-		{
-			best = loc;
-		}
-	}
-	if(best == $location[none] || my_meat() >= get_property("auto_permanentReserve").to_int())
-	{
-		return best;
-	}
-	float bestExp = 0;
-	foreach i, loc in open
-	{
-		bestExp = max(bestExp, auto_zoneExpScore(loc));
-	}
-	location richest = best;
-	float richestMeat = -1;
-	foreach i, loc in open
-	{
-		float meat = auto_zoneMeatPerTurn(loc);
-		if(auto_zoneExpScore(loc) >= 0.9 * bestExp && meat > richestMeat)
-		{
-			richest = loc;
-			richestMeat = meat;
-		}
-	}
-	return richest;
 }
 
 // HP lost a turn in a zone we can fight in at our HP with impunity, or -1 if it isn't one: its fights end in one hit, and
@@ -1821,7 +1733,7 @@ boolean auto_lowHpAdventure()
 	float bestHp = 0;
 	foreach loc in auto_ordinaryZones()
 	{
-		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc) || auto_zoneRefusedToday(loc))
+		if(!zone_isAvailable(loc) || auto_statsTooLowFor(loc))
 		{
 			continue;
 		}
@@ -1848,33 +1760,6 @@ boolean auto_lowHpAdventure()
 	return auto_fallbackAdventure(best);
 }
 
-// A farm target the player's script marks as coming first (auto_farmFirst, with auto_farmZone and auto_farmItem): autokol
-// sets it for the parts of a better dwelling (user, 2026-11-21: "Farming house instead of resting seems the priority, as
-// otherwise the rest is only half efficient"). It runs ahead of the quests. Where no single hit can drop us and every
-// fight ends in one hit (auto_lowHpFightCost), it goes in without healing first, which is what the farming saves.
-boolean auto_farmFirstAdventure()
-{
-	if(!get_property("auto_farmFirst").to_boolean())
-	{
-		return false;
-	}
-	location zone = get_property("auto_farmZone").to_location();
-	item want = get_property("auto_farmItem").to_item();
-	if(zone == $location[none] || want == $item[none] || available_amount(want) > 0 || !zone_isAvailable(zone)
-		|| auto_statsTooLowFor(zone) || auto_zoneRefusedToday(zone) || have_effect($effect[Beaten Up]) > 0)
-	{
-		return false;
-	}
-	boolean noHeal = auto_lowHpFightCost(zone) >= 0;
-	auto_log_info("Farming " + want + " in " + zone + " before the quests (the player's script puts it first)"
-		+ (noHeal && my_hp() <= my_maxhp() * 0.75 ? ", without healing: nothing there can hurt us much" : "") + ".", "blue");
-	if(noHeal)
-	{
-		set_property("_auto_lowHpZone", zone + "@" + my_turncount());
-	}
-	return auto_fallbackAdventure(zone);
-}
-
 // The zone auto_lowHpAdventure chose for this turn, which the pre-adventure script goes into without healing.
 boolean auto_lowHpZoneNow(location place)
 {
@@ -1882,34 +1767,3 @@ boolean auto_lowHpZoneNow(location place)
 	return count(f) == 2 && f[0].to_location() == place && f[1].to_int() == my_turncount();
 }
 
-// The last resort when there are no side quests left either.
-boolean LX_experienceZoneInsteadOfPowerlevel()
-{
-	// A part we want for a crafted upgrade (auto_farmZone and auto_farmItem, set by autokol's autostart when farming it
-	// costs less than buying it): farming earns Meat and stats as well as the drop, so it comes first (user, 2026-11-19).
-	location farmZone = get_property("auto_farmZone").to_location();
-	item farmItem = get_property("auto_farmItem").to_item();
-	if(farmZone != $location[none] && farmItem != $item[none] && available_amount(farmItem) == 0
-		&& zone_isAvailable(farmZone) && !auto_statsTooLowFor(farmZone) && !auto_zoneRefusedToday(farmZone))
-	{
-		auto_log_info("Farming " + farmItem + " in " + farmZone + " for a crafted upgrade.", "blue");
-		return auto_fallbackAdventure(farmZone);
-	}
-
-	location zone = auto_experienceZone();
-	if(zone == $location[none])
-	{
-		return false;
-	}
-	int reserve = get_property("auto_permanentReserve").to_int();
-	if(my_meat() < reserve)
-	{
-		auto_log_info("Short of Meat (" + my_meat() + " of the " + reserve + " kept for permanent purchases), so adventuring in "
-			+ zone + " for about " + round(auto_zoneMeatPerTurn(zone)) + " Meat a turn in Meat and drops, with experience within 10% of the best open zone.", "blue");
-	}
-	else
-	{
-		auto_log_info("Nothing to powerlevel with and no side quests left, so adventuring in " + zone + " for experience.", "blue");
-	}
-	return auto_fallbackAdventure(zone);
-}

@@ -186,7 +186,6 @@ void initializeSettings() {
 	set_property("auto_beatenUpCount", 0);
 	set_property("auto_beatenUpLastAdv", false);
 	remove_property("auto_beatenUpLocations");
-	remove_property("auto_restLocations");
 	remove_property("auto_oneHitKills");
 	set_property("auto_getBeehive", false);
 	set_property("auto_bruteForcePalindome", false);
@@ -2106,7 +2105,6 @@ boolean doTasks()
 	
 	auto_useLeprecondoDrops();
 
-	if (auto_farmFirstAdventure()) { return true; }	// the player's script puts a farm first (autokol: a better dwelling)
 	if (auto_lowHpAdventure()) { return true; }	// low on HP with only paid rests left: a turn where we can't be hurt may pay better
 	if (LX_zootoFight()) { return true; }
 

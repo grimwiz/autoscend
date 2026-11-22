@@ -90,10 +90,112 @@ void print_footer()
 
 void auto_ghost_prep(location place)
 {
-	if(!auto_canDamageGhosts(place, true))
+	//if place contains physically immune enemies then we need to be prepared to deal non physical damage.
+	if(!is_ghost_in_zone(place))
 	{
-		abort("I was about to head into [" +place+ "] which contains ghosts. I can not damage those");
+		return;		//no ghosts no problem
 	}
+	if(in_plumber())
+	{
+		return;		//these paths either have their own ghost handling. or can always kill ghosts
+	}
+	if(get_property("youRobotBottom").to_int() == 2)
+	{
+		return;		//you robot with a rocket crotch. deals fire damage to kill ghosts.
+	}
+	//a few iconic spells per avatar is ok. no need to be too exhaustive
+	foreach sk in $skills[
+		Saucestorm, saucegeyser,	//base classes
+		Fist of the Mummy,		    //actually ed the undying
+		Boil,						//avatar of jarlsberg
+		Bilious Burst,				//zombie slayer
+		Heroic Belch,				//avatar of boris
+		Smoke Break,				//avatar of sneaky pete
+		Fireball Toss,				//path of the plumber
+		Chill of the Tomb,			//dark gyffte
+		Lavafava, Pungent Mung, Beanstorm,			  //avatar of west of loathing
+		Hot Foot, Emmental Elemental, Sax of Violence,//avatar of shadow over loathing
+		Bacon Ray, Spicy Meatball	//adventurer meats world
+		]
+	{
+		if(auto_have_skill(sk))
+		{
+			if(my_maxmp() >= 32)
+				acquireMP(32, 0);		//make sure we actually have the MP to cast spells
+			else low_mp_handler();
+		}
+		if(canUse(sk)) return;	//we can kill them with a spell
+	}
+	if(auto_haveDarts() && dartEleDmg())
+	{
+		addToMaximize("+equip " + $item[Everfull Dart Holster]); //If we have darts and an elemental damage buff, might as well use that
+		return;
+	}
+	
+	int m_hot = 1;
+	int m_cold = 1;
+	int m_spooky = 1;
+	int m_sleaze = 1;
+	int m_stench = 1;
+	float [monster] apprates = auto_combat_appearance_rates(place, true);
+	foreach idx, mob in get_monsters(place)
+	{
+		if(apprates[mob] <= 0) continue; //won't show up because banished or req's not fulfilled
+		if(mob.physical_resistance >= 80)
+		{
+			switch(monster_element(mob))
+			{
+			case $element[hot]:
+				m_hot = 0;
+				m_sleaze = 2;
+				m_stench = 2;
+				break;
+			case $element[cold]:
+				m_cold = 0;
+				m_hot = 2;
+				m_spooky = 2;
+				break;
+			case $element[spooky]:
+				m_spooky = 0;
+				m_hot = 2;
+				m_stench = 2;
+				break;
+			case $element[sleaze]:
+				m_sleaze = 0;
+				m_cold = 2;
+				m_spooky = 2;
+				break;
+			case $element[stench]:
+				m_stench = 0;
+				m_sleaze = 2;
+				m_cold = 2;
+				break;
+			}
+		}
+	}
+	
+	string max_with;
+	int bonus;
+	if(m_hot != 0) max_with += "," +10*m_hot+ "hot dmg";
+	if(m_cold != 0) max_with += "," +10*m_cold+ "cold dmg";
+	if(m_spooky != 0) max_with += "," +10*m_spooky+ "spooky dmg";
+	if(m_sleaze != 0) max_with += "," +10*m_sleaze+ "sleaze dmg";
+	if(m_stench != 0) max_with += "," +10*m_stench+ "stench dmg";
+	
+	simMaximizeWith(max_with);
+	if(m_hot != 0) bonus += simValue("hot damage");
+	if(m_cold != 0) bonus += simValue("cold damage");
+	if(m_spooky != 0) bonus += simValue("spooky damage");
+	if(m_sleaze != 0) bonus += simValue("sleaze damage");
+	if(m_stench != 0) bonus += simValue("stench damage");
+	
+	if(bonus > 9)
+	{
+		addToMaximize(max_with);
+		return;
+	}
+
+	abort("I was about to head into [" +place+ "] which contains ghosts. I can not damage those");
 }
 
 boolean auto_pre_adventure()

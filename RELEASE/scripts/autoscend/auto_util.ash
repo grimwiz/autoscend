@@ -4495,15 +4495,6 @@ boolean auto_interruptZoneCheck()
 
 void auto_interruptCheck(boolean debug)
 {
-	//_auto_stopAtTurn: stop once this many turns have been played today, leaving the rest of the day's adventures free
-	//(a day-only property, so the next day plays in full)
-	int stopAt = get_property("_auto_stopAtTurn").to_int();
-	if(stopAt > 0 && my_turncount() >= stopAt)
-	{
-		remove_property("_auto_stopAtTurn");
-		auto_log_info("Reached turn " + stopAt + " (_auto_stopAtTurn), so stopping here.", "blue");
-		set_property("auto_interrupt", true);
-	}
 	if(get_property("auto_interrupt").to_boolean())
 	{
 		set_property("auto_interrupt", false);

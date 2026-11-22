@@ -190,8 +190,7 @@ boolean LX_attemptPowerLevel()
 			if(autoAdv($location[The Haunted Gallery])) return true;
 		}		
 	}
-	// still nothing: rather than end the day with turns left, fight somewhere for experience
-	return LX_experienceZoneInsteadOfPowerlevel();
+	return false;
 }
 
 boolean disregardInstantKarma()
