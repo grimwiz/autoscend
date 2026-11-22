@@ -382,9 +382,6 @@ boolean auto_run_choice(int choice, string page)
 		case 618: // Cabin Fever (Twin Peak)
 			run_choice(2); // finish twin peak quest the long way
 			break;
-		case 632: // Add an E-Mail Address: shown instead of the mall (and other multiplayer features) to an account without one
-			visit_url("main.php"); // its only option is the e-mail form; walk away, and the mall search finds nothing
-			break;
 		case 669: // The Fast and the Furry-ous (The Castle in the Clouds in the Sky (Basement))
 		case 670: // You Don't Mess Around with Gym (The Castle in the Clouds in the Sky (Basement))
 		case 671: // Out in the Open Source (The Castle in the Clouds in the Sky (Basement))

@@ -132,8 +132,6 @@ boolean LX_attemptPowerLevel()
 		return autoAdv(scalezone);
 	}
 	if(timeSpinnerAdventure()) return true;
-	// no scaling zone: side quests pay in items, Meat and a familiar while their fights still give experience
-	if(LX_sideQuestsInsteadOfPowerlevel()) return true;
 	//do not use the scaling zone [The Thinknerd Warehouse] here.
 	//it has low stat caps on the scaling, resulting in <30 substats per adv
 	
