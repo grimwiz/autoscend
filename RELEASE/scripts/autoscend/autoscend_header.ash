@@ -1575,7 +1575,6 @@ boolean LX_unlockKnobMenagerie();
 boolean tomb_already_found();
 boolean LX_acquireEpicWeapon();
 boolean LX_NemesisQuest();
-boolean auto_nemesisInRun();
 void houseUpgrade();
 
 ########################################################################################################
