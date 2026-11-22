@@ -1073,7 +1073,7 @@ boolean auto_pre_adventure()
 	}
 
 	if (my_hp() <= (my_maxhp() * 0.75) && !auto_lowHpZoneNow(place)) {
-		acquireHP();	// not in the zone auto_lowHpAdventure picked to earn the Meat for HP rather than rest for it
+		acquireHP();	// not in the zone chosen to earn the Meat for HP rather than rest for it (auto_lowHpZoneNow)
 	}
 
 	// always heal to full HP for Boo Clues

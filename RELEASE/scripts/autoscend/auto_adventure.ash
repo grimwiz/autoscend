@@ -2,13 +2,6 @@
 // it will (should?) handle the complete adventure from start to finish regardless of
 // how many choices or combats it encounters (this is mafia's adv1 behaviour)
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
-// A zone's recommended main stat, which KoL doesn't enforce: the fork's own zone choosers (side quests, HP
-// farming) skip a zone below it.
-boolean auto_statsTooLowFor(location loc)
-{
-	return loc.recommended_stat > 0 && my_buffedstat(my_primestat()) < loc.recommended_stat;
-}
-
 // A boss we can't beat yet: come back later, once levels or gear have caught up. A first life (a level 5 Seal Clubber
 // with no permed skills) met the Knob Goblin King, hit it for 1-3 a round against 60 HP while it hit back for 11, and
 // the combat script aborted the day. Two tests, both with what we know before the fight:
@@ -67,87 +60,6 @@ int auto_damagePerRound()
 		perRound = max(perRound, auto_damageEstimate(key));
 	}
 	return perRound;
-}
-
-// One-hit kills seen this life, by zone (user, 2026-11-20): auto_oneHitKills holds "location id:results", the results
-// a 1 for a fight our first attack or damage skill won and a 0 for one that took more, oldest first, the last 10. A zone
-// at the edge of our damage shows a low share, where one estimate across all fights would call it one hit.
-string auto_oneHitResults(location loc)
-{
-	foreach i, entry in split_string(get_property("auto_oneHitKills"), ",")
-	{
-		string[int] f = split_string(entry, ":");
-		if(count(f) == 2 && f[0].to_int() == loc.to_int())
-		{
-			return f[1];
-		}
-	}
-	return "";
-}
-
-// The share of a zone's recorded fights that one hit won, or -1 with fewer than 3 to go on.
-float auto_zoneOneHitShare(location loc)
-{
-	string results = auto_oneHitResults(loc);
-	if(length(results) < 3)
-	{
-		return -1;
-	}
-	int ones = 0;
-	for(int i = 0; i < length(results); i++)
-	{
-		if(char_at(results, i) == "1") ones += 1;
-	}
-	return ones.to_float() / length(results);
-}
-
-// Notes the fight just won, if it was all attacks and damage skills: an instakill, a stun or an item says nothing about
-// our damage. Called after every adventure; _auto_oneHitNoted keeps a fight from being noted twice.
-void auto_noteOneHitKill()
-{
-	string started = get_property("_lastCombatStarted");
-	if(started == "" || started == get_property("_auto_oneHitNoted"))
-	{
-		return;
-	}
-	set_property("_auto_oneHitNoted", started);
-	monster mob = last_monster();
-	if(!get_property("_lastCombatWon").to_boolean() || mob == $monster[none] || mob.boss || my_location() == $location[none])
-	{
-		return;
-	}
-	int hits = 0;
-	foreach i, action in split_string(get_property("_lastCombatActions"), ";")
-	{
-		if(action == "")
-		{
-			continue;
-		}
-		if(!($strings[attack, sk1003, sk1004, sk1005, sk4005, sk4012] contains action))
-		{
-			return;		// not just Thrust-Smack, Lunge Smack, Lunging Thrust-Smack, Saucestorm or Saucegeyser
-		}
-		hits += 1;
-	}
-	if(hits == 0)
-	{
-		return;
-	}
-	location loc = my_location();
-	string results = auto_oneHitResults(loc) + (hits == 1 ? "1" : "0");
-	if(length(results) > 10)
-	{
-		results = substring(results, length(results) - 10);
-	}
-	string kept = "";
-	foreach i, entry in split_string(get_property("auto_oneHitKills"), ",")
-	{
-		if(entry != "" && split_string(entry, ":")[0].to_int() != loc.to_int())
-		{
-			kept += (kept == "" ? "" : ",") + entry;
-		}
-	}
-	set_property("auto_oneHitKills", kept + (kept == "" ? "" : ",") + loc.to_int() + ":" + results);
 }
 
 // Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it

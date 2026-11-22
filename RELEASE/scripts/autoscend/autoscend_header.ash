@@ -1553,10 +1553,6 @@ void considerGalaktikSubQuest();
 boolean startGalaktikSubQuest();
 boolean finishGalaktikSubQuest();
 boolean LX_galaktikSubQuest();
-boolean auto_wantBonePet();
-boolean auto_fallbackAdventure(location loc);
-int auto_dropSaleValue(item it);
-float auto_zoneMeatPerTurn(location loc);
 boolean startMeatsmithSubQuest();
 boolean finishMeatsmithSubQuest();
 boolean LX_doingPirates();
@@ -1638,21 +1634,12 @@ boolean LX_craftAcquireItems();
 
 ########################################################################################################
 //Defined in autoscend/auto_adventure.ash
-boolean auto_statsTooLowFor(location loc);
 string auto_bossNotReadyReason(monster boss);
 string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp);
 boolean auto_canHit(int defence);
 int auto_damagePerRound();
-string auto_oneHitResults(location loc);
-float auto_zoneOneHitShare(location loc);
-void auto_noteOneHitKill();
-boolean[location] auto_ordinaryZones();
-float auto_lowHpFightCost(location loc);
-boolean auto_lowHpAdventure();
 boolean auto_lowHpZoneNow(location place);
-float auto_restHp();
 boolean auto_healsWithoutTurns();
-float auto_meatPerHp();
 void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored

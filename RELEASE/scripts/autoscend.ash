@@ -186,7 +186,6 @@ void initializeSettings() {
 	set_property("auto_beatenUpCount", 0);
 	set_property("auto_beatenUpLastAdv", false);
 	remove_property("auto_beatenUpLocations");
-	remove_property("auto_oneHitKills");
 	set_property("auto_getBeehive", false);
 	set_property("auto_bruteForcePalindome", false);
 	set_property("auto_doWhiteys", false);
@@ -1524,7 +1523,7 @@ boolean adventureFailureHandler()
 			tooManyAdventures = false;		//if we do not have iotm powerlevel zones then we are forced to use haunted gallery or bedroom
 		}
 		
-		// a zone the fallback chose on purpose for this turn (auto_fallbackAdventure): powerlevelling or farming there
+		// a zone a fallback chose on purpose for this turn (autokol's, which sets _auto_fallbackZone): powerlevelling or farming there
 		// is the plan, not a stall
 		string[int] fallback = split_string(get_property("_auto_fallbackZone"), "@");
 		if(count(fallback) == 2 && fallback[0] == place.to_string() && my_turncount() - fallback[1].to_int() <= 1)
@@ -1593,7 +1592,7 @@ void beatenUpResolution()
 			abort("We are getting beaten up too much, this is not good. Aborting.");
 		}
 		// Healing to full with nothing affordable means paid rests: three gave a first life 27 HP of a 50 HP gap
-		// (user, 2026-11-20). Then rest once below, for the Beaten Up, and let auto_lowHpAdventure choose between
+		// (user, 2026-11-20). Then rest once below, for the Beaten Up, and let HP farming (autokol) choose between
 		// resting and earning the HP in a zone we can fight in at our HP.
 		if(auto_healsWithoutTurns())
 		{
@@ -2104,7 +2103,6 @@ boolean doTasks()
 	
 	auto_useLeprecondoDrops();
 
-	if (auto_lowHpAdventure()) { return true; }	// low on HP with only paid rests left: a turn where we can't be hurt may pay better
 	if (LX_zootoFight()) { return true; }
 
 

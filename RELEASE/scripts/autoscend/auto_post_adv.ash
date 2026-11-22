@@ -67,7 +67,6 @@ boolean auto_post_adventure()
 	}
 
 	set_property("auto_nextEncounter","");
-	auto_noteOneHitKill();
 
 	/* This tracks noncombat-forcers like Clara's Bell and stench jelly, which
 	 * set our noncombat rate to maximum until we encounter a noncombat.
