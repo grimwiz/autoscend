@@ -1591,13 +1591,12 @@ void beatenUpResolution()
 		{
 			abort("We are getting beaten up too much, this is not good. Aborting.");
 		}
-		// Heal here only without spending turns: when __restore still rested for HP, three paid rests gave a first life
-		// 27 HP of a 50 HP gap (user, 2026-11-20). Then rest once below, for the Beaten Up, and leave the rest of the HP
-		// to autokol, which farms it where it can and rests only to 75%.
-		if(auto_healsWithoutTurns())
-		{
-			acquireHP();
-		}
+		// Resolve the Beaten Up itself here, not the HP (user, 2026-11-23: "beaten up should be resolved before
+		// farming"): vanilla's acquireHP() heals to full, so on 2026-11-23 it spent 140 of 145 Meat on restores,
+		// reached 35/75 and aborted, and the rest that then removed the Beaten Up gave 40 HP. A remedy we have, or a
+		// rest below (free if there's one left); the HP after that is autokol's, which farms it where it can and heals
+		// only to 75%.
+		uneffect($effect[Beaten Up]);
 	}
 
 	if(have_effect($effect[Beaten Up]) > 0)

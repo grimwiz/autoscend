@@ -1639,7 +1639,6 @@ string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp);
 boolean auto_canHit(int defence);
 int auto_damagePerRound();
 boolean auto_lowHpZoneNow(location place);
-boolean auto_healsWithoutTurns();
 void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored
 boolean autoAdv(int num, location loc);						//num is ignored

@@ -2274,12 +2274,6 @@ int doRest()
 	return get_property("timesRested").to_int();
 }
 
-// Whether HP can come back without spending turns: a free rest, or a restore we can afford.
-boolean auto_healsWithoutTurns()
-{
-	return haveFreeRestAvailable() || count(__maximize_restore_options(my_maxhp(), my_mp(), meatReserve(), true)) > 0;
-}
-
 // The last resort for Beaten Up: rest in the campground, a turn once the free rests are gone. With nowhere to rest, put up
 // a tent first: a Barskin Tent (bar skin + wooden stakes) or the Newbiesport tent. __restore used it for HP too, up to 3
 // rests until HP reached its target (f8417bbd, after a first life with 11 Meat and no free rests aborted the day at 2 HP),
