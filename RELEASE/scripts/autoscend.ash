@@ -1958,7 +1958,6 @@ boolean doTasks()
 	}
 	if(inAftercore())
 	{
-		auto_outOfRoninTasks();	// the King being freed is what usually ends Ronin
 		auto_log_warning("I am in aftercore", "red");
 		return false;
 	}
@@ -2041,19 +2040,7 @@ boolean doTasks()
 
 	finishBuildingSmutOrcBridge();
 	councilMaintenance();
-	auto_outOfRoninTasks();
-	auto_pearlForMeat();	// low on meat in Ronin: one pull of a pearl or war trophy beats many pulls of Meat
-	auto_levelUpPull();		// once per level: the best equipment pull from Hagnk's, if any improves the gear
-	auto_familiarEquipPull();	// once a day: a better familiar item from Hagnk's, if beating what's worn pays for the pull
 	auto_buySkills();		// formerly picky_buyskills() now moved here
-	auto_stillTonicWater();	// MP for a quarter of what Doc Galaktik charges, rather than leaving the still for bedtime
-	// The oven and cocktailcrafting kit as soon as there's 1,000 Meat to spare beyond each, day 1 included: cooked food
-	// and mixed drinks then compete with pulled ones, which now cost the gear pull they displace. Waiting for day 2
-	// saved Meat that run 102's day 1 spent on a gnome skill and Doc Galaktik's tonics instead.
-	ovenHandle();
-	cocktailKitHandle();
-	auto_bartenderHandle();	// once the kit is in: free fancy mixing, so made cocktails can replace drink pulls
-	auto_summonGarnishes();	// garnishes, noodles, reagents: reset on ascending too, so day 1 gets them once the kit and oven are here
 	awol_buySkills();
 	awol_useStuff();
 	aosol_unCurse();
@@ -2347,10 +2334,6 @@ void auto_begin()
 		consumeStuff();
 	}
 
-	if(inAftercore())
-	{
-		auto_outOfRoninTasks();	// doTasks stops before it when overdrunk
-	}
 	if(doBedtime())
 	{
 		auto_log_info("Done for today (" + my_daycount() + "), beep boop");

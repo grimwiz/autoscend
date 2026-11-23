@@ -592,9 +592,8 @@ void bedtime_pulls()
 		pullXWhenHaveY($item[11-Leaf Clover], 1, item_amount($item[11-Leaf Clover]));
 	}
 
-	// pulls don't carry over: whatever is left goes on things needed later in the run, then into Meat
+	// pulls don't carry over: whatever is left goes on things needed later in the run (autokol turns the rest into Meat)
 	bedtime_pulls_prep();
-	auto_sparePullsForMeat();
 }
 
 // Last call on the day's pulls, after food, drink, rollover gear and the rest: a tenderizing hammer (smithing; the

@@ -1588,16 +1588,9 @@ boolean auto_craftInsteadOfPull(item it, int howMany);
 int auto_craftBudget();
 boolean auto_pieceMakeable(item it);
 boolean auto_finishWithinBudget(item it);
-void auto_outOfRoninTasks();
-void auto_bartenderHandle();
-void auto_replaceBartender();
 void auto_day2Prep();
 boolean auto_nonCombatSlotFull(slot s);
 void auto_nonCombatPull(location place);
-float auto_statementScore(string statement, item it);
-item auto_bestStorageCraft(string statement, int pullsFree, float pullValue, float turnValue, float pointMeat, float[item] netMeat, int[item] pullsNeeded);
-boolean auto_makeStorageCraft(item it);
-void auto_makeOwnedGear(string statement);
 int auto_pullPriceCap(item it);
 float auto_pullCostAdventures(item it);
 boolean pulverizeThing(item it);
@@ -1612,24 +1605,16 @@ boolean auto_hermit(int amt, item it);
 boolean acquireHermitItem(item it);
 boolean pull_meat(int target);
 int handlePulls(int day);
-boolean auto_pearlForMeat();
 int auto_combatMpNeeded();
 float auto_fightsLeft();
 float auto_scorePointMeat();
 float auto_turnValue();
-boolean auto_pullForMeat(string why);
-void auto_sparePullsForMeat();
 float auto_pullValueMeat();
 float auto_scorePointMeat(float fights);
 string[string] auto_shopZoneGroups();
 float auto_shopFights(location place);
-float auto_pullMinScore();
-void auto_familiarEquipPull();
 void auto_recordShoppingList(string statement, string where, location place);
-void auto_logShoppingList(string statement);
 void auto_zoneShoppingList(location place);
-void auto_buyShoppingList();
-void auto_levelUpPull();
 boolean LX_craftAcquireItems();
 
 ########################################################################################################
@@ -1721,15 +1706,9 @@ int auto_spleenFamiliarAdvItemsPossessed();
 boolean auto_chewAdventures();
 boolean auto_bedtimeChewing = false;	// at bedtime adventures roll over, so chew regardless of how many are left
 boolean[item] auto_chewFailed;	// spleen items that would not chew this start: auto_chewAdventures skips them
-boolean auto_familiarEquipPullExplained = false;	// auto_familiarEquipPull has said, this start, why it is waiting
 boolean auto_breakfastCounterVisit();
 item still_targetToOrigin(item target);
-boolean auto_stillMake(item target, int qty);
-void auto_summonIngredient(skill sk, boolean useful);
-void auto_summonGarnishes();
 int auto_cocktailPartsReserved(item part);
-void auto_stillCocktailBases();
-void auto_stillTonicWater();
 boolean stillReachable();
 int auto_stillsAvailable();
 boolean distill(item target);
