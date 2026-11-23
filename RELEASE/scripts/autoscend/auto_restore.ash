@@ -1657,7 +1657,6 @@ boolean __restore(string resource_type, int goal, int meat_reserve, boolean useF
 	auto_log_info("Target "+resource_type+" => "+goal+" - Considering restore options at " + my_hp() + "/" + my_maxhp() + " HP with " + my_mp() + "/" + my_maxmp() + " MP", "blue");
 	auto_log_info("Active Negative Effects => " + list_to_string(negative_effects()));
 
-	int paidRests = 0;
 	while(current_resource() < goal)
 	{
 		if(goal > max_resource())	//prevent infinite loop in case maxHP or maxMP dropped below goal
@@ -1665,16 +1664,6 @@ boolean __restore(string resource_type, int goal, int meat_reserve, boolean useF
 			goal = max_resource();
 		}
 		__RestorationOptimization[int] options = __maximize_restore_options(hp_target(), mp_target(), meat_reserve, useFreeRests);
-		if(count(options) == 0 && resource_type == "hp" && paidRests < 3 && auto_restInDwelling("Nothing affordable restores HP"))
-		{
-			paidRests++;
-			continue;
-		}
-		if(count(options) == 0 && paidRests > 0)
-		{
-			auto_log_warning("Rested " + paidRests + " time(s) and carrying on with " + my_hp() + " HP.", "red");
-			return false;
-		}
 		if(count(options) == 0)
 		{
 			auto_log_error("Target "+resource_type+" => " + goal + " - couldnt determine an effective restoration mechanism");
@@ -2291,9 +2280,10 @@ boolean auto_healsWithoutTurns()
 	return haveFreeRestAvailable() || count(__maximize_restore_options(my_maxhp(), my_mp(), meatReserve(), true)) > 0;
 }
 
-// The last resort for HP and for Beaten Up: rest in the campground, a turn once the free rests are gone. With nowhere
-// to rest, put up a tent first: a Barskin Tent (bar skin + wooden stakes) or the Newbiesport tent. A first life with
-// 11 Meat and no free rests aborted the day at 2 HP rather than spend one of its 20 turns resting.
+// The last resort for Beaten Up: rest in the campground, a turn once the free rests are gone. With nowhere to rest, put up
+// a tent first: a Barskin Tent (bar skin + wooden stakes) or the Newbiesport tent. __restore used it for HP too, up to 3
+// rests until HP reached its target (f8417bbd, after a first life with 11 Meat and no free rests aborted the day at 2 HP),
+// but its target is full HP, so it rested for the last 3 HP; autokol rests for HP now, only up to 75%.
 boolean auto_restInDwelling(string why)
 {
 	if(isActuallyEd() || in_darkGyffte() || in_nuclear() || in_wereprof() || in_robot() || in_amw() || in_small())
