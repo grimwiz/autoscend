@@ -1316,28 +1316,163 @@ int auto_remainingMildEvilUses()
 	return 3-get_property("_mildEvilPerpetrated").to_int();
 }
 
-// ---- Damage seen per action, for finishing monsters cheaply ----
-// auto_damageSeen = "<ascension>|attack:12,0,15;Saucestorm:48,51" -- newest first, the last 10 rounds per action.
-// A round's damage is the drop in monster HP after the action, so it includes misses (0) and passive damage.
+// ---- What each attack does, for finishing a monster at the least cost ----
+// A round's damage depends on the weapon and on our hit stat against the monster's defence, and below that defence hits
+// start to miss (user, 2026-11-24: "estimates change, per weapon and when a hit vs miss cliff is passed"). Each round is
+// recorded under its action and weapon (auto_attackKey), with our hit stat over the monster's defence (the margin), the
+// HP it took off and the monster, the last 60 per key, newest last:
+//   auto_attackSeen = "<action>@<weapon id>=<margin>/<damage>/<monster id>,...|..."
+// It's kept across ascensions: the margin carries our stats and the monster's defence, so last life's rounds with a
+// weapon still tell what it does at this life's stats, and a new weapon starts from the same action with other weapons.
+// A round doing under a quarter of the key's median damage is a miss (what lands then is passive damage: on 2026-11-23
+// grimwiz's Lunge Smack did 11-17 in 9 of 19 Copperhead Club rounds at Muscle 266 against defence 160-170, 311-350 in
+// the others), and counts against the hit rate, not the damage. The HP we lose between our actions is tracked too
+// (_auto_combatTracker_hpLost over _auto_combatTracker_hpRounds), net of what a familiar or regen gives back.
 
-string[string] auto_damageSeenMap()
+record auto_attackPoint
 {
-	string[string] seen;
-	string raw = get_property("auto_damageSeen");
-	string prefix = my_ascensions() + "|";
-	if(index_of(raw, prefix) != 0)
+	int margin;
+	int dmg;
+	int mon;
+};
+
+// Our hit stat now. With attacks that can't miss buffed_hit_stat() is Integer.MAX_VALUE: then the stat itself.
+int auto_attackHitStat()
+{
+	int h = buffed_hit_stat();
+	if(h > 100000)
 	{
-		return seen;	// nothing yet this ascension: older numbers are for a different level and class
+		h = my_buffedstat(weapon_type(equipped_item($slot[weapon])) == $stat[Moxie] ? $stat[Moxie] : $stat[Muscle]);
 	}
-	foreach i, entry in split_string(substring(raw, length(prefix)), ";")
+	return h;
+}
+
+// "attack@<weapon id>" or "<skill>@<weapon id>" for a combat action string, "" for anything else.
+string auto_attackKey(string action)
+{
+	string name = "";
+	if(action == "attack" || action == "attack with weapon")
 	{
-		int colon = index_of(entry, ":");
-		if(colon > 0)
+		name = "attack";
+	}
+	else if(index_of(action, "skill ") == 0)
+	{
+		name = substring(action, 6);
+	}
+	if(name == "" || create_matcher("[=|,/@;]", name).find())
+	{
+		return "";
+	}
+	return name + "@" + equipped_item($slot[weapon]).to_int();
+}
+
+auto_attackPoint[int] auto_attackPoints(string seen, string key)
+{
+	auto_attackPoint[int] pts;
+	string prefix = key;
+	boolean pooled = ends_with(key, "@");		// every weapon's rounds with this action
+	foreach i, entry in split_string(seen, "\\|")
+	{
+		int eq = index_of(entry, "=");
+		if(eq <= 0) continue;
+		string k = substring(entry, 0, eq);
+		if(pooled ? !starts_with(k, prefix) : k != key) continue;
+		foreach j, p in split_string(substring(entry, eq + 1), ",")
 		{
-			seen[substring(entry, 0, colon)] = substring(entry, colon + 1);
+			string[int] f = split_string(p, "/");
+			if(count(f) != 3) continue;
+			auto_attackPoint pt;
+			pt.margin = f[0].to_int();
+			pt.dmg = f[1].to_int();
+			pt.mon = f[2].to_int();
+			pts[count(pts)] = pt;
 		}
 	}
-	return seen;
+	return pts;
+}
+
+// The HP this action takes off this monster in an average round at this margin: hit rate times the damage of a hit.
+// The damage of a hit is a straight line in the margin, fitted to the hits seen (slope kept between 0 and 3); against a
+// monster with hits of its own on record, scaled by how those came out against the line (resistances, caps). The hit
+// rate is this monster's when it has 3 rounds on record, else that of rounds within 25 of this margin, and never
+// below that of all the rounds at lower margins. -1 when that can't be told: fewer than 4 rounds with this action (this
+// weapon's, else any weapon's), or none near this margin.
+float auto_attackEstimate(string seen, string key, monster enemy, int margin)
+{
+	if(key == "") return -1;
+	auto_attackPoint[int] pts = auto_attackPoints(seen, key);
+	if(count(pts) < 4)
+	{
+		pts = auto_attackPoints(seen, substring(key, 0, index_of(key, "@") + 1));
+	}
+	int n = count(pts);
+	if(n < 4) return -1;
+	int[int] ds;
+	foreach i, p in pts ds[i] = p.dmg;
+	sort ds by value;
+	float miss = 0.25 * ds[n / 2];
+	int monAll = 0, monHit = 0, nearAll = 0, nearHit = 0, lowAll = 0, lowHit = 0, hits = 0;
+	float sm = 0, sd = 0;
+	int[int] hitDs;
+	foreach i, p in pts
+	{
+		boolean hit = p.dmg > 0 && p.dmg >= miss;
+		if(p.mon == enemy.to_int()) { monAll += 1; if(hit) monHit += 1; }
+		if(p.margin - margin <= 25 && margin - p.margin <= 25) { nearAll += 1; if(hit) nearHit += 1; }
+		if(p.margin <= margin) { lowAll += 1; if(hit) lowHit += 1; }
+		if(hit)
+		{
+			hitDs[hits] = p.dmg;
+			hits += 1;
+			sm += p.margin;
+			sd += p.dmg;
+		}
+	}
+	float rate;
+	if(monAll >= 3) rate = monHit.to_float() / monAll;
+	else if(nearAll >= 2) rate = nearHit.to_float() / nearAll;
+	else return -1;
+	// a higher margin never hits less often: at least the rate of all the rounds at lower margins
+	if(monAll < 3 && lowAll >= 4) rate = max(rate, lowHit.to_float() / lowAll);
+	if(hits == 0 || rate <= 0) return 0;
+	float meanM = sm / hits;
+	float meanD = sd / hits;
+	float vm = 0, cv = 0;
+	foreach i, p in pts
+	{
+		if(p.dmg <= 0 || p.dmg < miss) continue;
+		vm += (p.margin - meanM) * (p.margin - meanM);
+		cv += (p.margin - meanM) * (p.dmg - meanD);
+	}
+	float slope = 0;
+	float base = meanD;
+	if(hits >= 4 && vm / hits >= 25)
+	{
+		slope = min(3.0, max(0.0, cv / vm));
+		base = meanD - slope * meanM;
+	}
+	else
+	{
+		sort hitDs by value;
+		base = hitDs[hits / 2];
+	}
+	float dmg = base + slope * margin;
+	float[int] ratios;
+	foreach i, p in pts
+	{
+		if(p.mon != enemy.to_int() || p.dmg <= 0 || p.dmg < miss) continue;
+		ratios[count(ratios)] = p.dmg / max(1.0, base + slope * p.margin);
+	}
+	if(count(ratios) >= 2)
+	{
+		sort ratios by value;
+		dmg *= ratios[count(ratios) / 2];
+	}
+	else if(starts_with(key, "attack@"))
+	{
+		dmg *= (100 - min(100, enemy.physical_resistance)) / 100.0;
+	}
+	return max(0.0, rate * dmg);
 }
 
 void auto_damageObserve(int round)
@@ -1349,51 +1484,52 @@ void auto_damageObserve(int round)
 	{
 		return;
 	}
+	int lost = get_property("_auto_combatTracker_lastHP").to_int() - my_hp();
+	set_property("_auto_combatTracker_hpLost", get_property("_auto_combatTracker_hpLost").to_int() + lost);
+	set_property("_auto_combatTracker_hpRounds", get_property("_auto_combatTracker_hpRounds").to_int() + 1);
 	int mortarRound = get_property("_auto_combatTracker_MortarRound").to_int();
 	if(mortarRound > -1 && mortarRound == round - 2)
 	{
 		return;	// a Stuffed Mortar Shell landed in that round as well
 	}
 	int dealt = max(0, before - monster_hp());
-	if(key == "attack" && dealt == 0)
+	if(starts_with(key, "attack@") && dealt == 0)
 	{
 		combat_status_add(combat_status_check("attacknohit") ? "attacknohit2" : "attacknohit");
 	}
-	string[string] seen = auto_damageSeenMap();
-	string vals = dealt.to_string();
-	int kept = 1;
-	foreach i, v in split_string(seen[key], ",")
+	string point = get_property("_auto_combatTracker_lastMargin") + "/" + dealt + "/" + last_monster().to_int();
+	string out = "";
+	boolean found = false;
+	foreach i, entry in split_string(get_property("auto_attackSeen"), "\\|")
 	{
-		if(v != "" && kept < 10)
+		int eq = index_of(entry, "=");
+		if(eq <= 0) continue;
+		if(substring(entry, 0, eq) == key)
 		{
-			vals += "," + v;
-			kept++;
+			string[int] old = split_string(substring(entry, eq + 1), ",");
+			string vals = "";
+			for(int j = max(0, count(old) - 59); j < count(old); j++)
+			{
+				if(old[j] != "") vals += old[j] + ",";
+			}
+			entry = key + "=" + vals + point;
+			found = true;
 		}
+		out += (out == "" ? "" : "|") + entry;
 	}
-	seen[key] = vals;
-	string out = my_ascensions() + "|";
-	boolean first = true;
-	foreach k, v in seen
+	if(!found)
 	{
-		out += (first ? "" : ";") + k + ":" + v;
-		first = false;
+		out += (out == "" ? "" : "|") + key + "=" + point;
 	}
-	set_property("auto_damageSeen", out);
+	set_property("auto_attackSeen", out);
 }
 
 void auto_damageNoteAction(string action)
 {
-	string key = "";
-	if(action == "attack" || action == "attack with weapon")
-	{
-		key = "attack";
-	}
-	else if(index_of(action, "skill ") == 0)
-	{
-		key = substring(action, 6);
-	}
-	set_property("_auto_combatTracker_lastAction", key);
+	set_property("_auto_combatTracker_lastAction", auto_attackKey(action));
 	set_property("_auto_combatTracker_lastMonsterHP", monster_hp());
+	set_property("_auto_combatTracker_lastHP", my_hp());
+	set_property("_auto_combatTracker_lastMargin", auto_attackHitStat() - monster_defense());
 }
 
 // Two weapon attacks this fight did no damage: the monster is dodging them. A fleaman jumps out of the way even when
@@ -1403,64 +1539,98 @@ boolean auto_weaponAttacksWhiffing()
 	return combat_status_check("attacknohit2");
 }
 
-// The second-lowest of the recent results: ignores criticals and allows for an occasional miss. -1 until 4 are seen.
-int auto_damageEstimate(string key)
+// The HP a round of this monster costs us: what this fight has shown once the monster has had 2 rounds (net of a
+// familiar's heals and regen, never below 0), else what KoLmafia expects its hit to be.
+float auto_incomingPerRound(monster enemy)
 {
-	string[string] seen = auto_damageSeenMap();
-	int[int] vals;
-	int n = 0;
-	foreach i, v in split_string(seen[key], ",")
+	int rounds = get_property("_auto_combatTracker_hpRounds").to_int();
+	if(rounds >= 2)
 	{
-		if(v != "")
-		{
-			vals[n] = v.to_int();
-			n++;
-		}
+		return max(0.0, get_property("_auto_combatTracker_hpLost").to_float() / rounds);
 	}
-	if(n < 4)
-	{
-		return -1;
-	}
-	sort vals by value;
-	return vals[1];
+	return max(0, expected_damage(enemy));
 }
 
-// The cheapest action that the damage seen so far says will kill the monster now, if it saves at least 3 MP over
-// costToBeat. A weapon attack is free; then damage spells in MP order. "" when nothing qualifies.
-string auto_cheapestKill(monster enemy, int costToBeat)
+// The cheapest way to finish the monster from here (user, 2026-11-24: "figure in the cost of mp and hp regain to doing
+// an attack. will a cheaper attack lead to an extra round of combat with associated hp loss"). For the free weapon
+// attack, the class's usual attack (attackMinor) and each damage spell we can cast: the rounds it needs at its estimate
+// (auto_attackEstimate), its MP for those rounds and the monster's hits in between (auto_incomingPerRound), priced at
+// what an NPC restore charges (_auto_meatPerMp, _auto_meatPerHp, set before each adventure). An option must finish
+// with 2 rounds to spare before the round limit and leave us standing. While the monster does us no damage the weapon
+// attack costs nothing, and with no rounds of it on record yet it's tried then, which is how it gets an estimate. ""
+// leaves the choice to the usual code: when the usual attack's cost can't be told and nothing free will do.
+string auto_cheapestKill(int round, monster enemy, string attackMinor, int costMinor)
 {
 	int hp = monster_hp();
-	if(hp <= 0 || costToBeat < 3 || !canSurvive(2.0))
+	if(hp <= 0) return "";
+	string seen = get_property("auto_attackSeen");
+	int margin = auto_attackHitStat() - monster_defense();
+	float incoming = auto_incomingPerRound(enemy);
+	float mpMeat = get_property("_auto_meatPerMp").to_float();
+	float hpMeat = get_property("_auto_meatPerHp").to_float();
+	if(mpMeat <= 0) mpMeat = 10;
+	if(hpMeat <= 0) hpMeat = 4;
+	int roundsLeft = defaultRoundLimit() - round - 2;
+
+	int[string] options;
+	if(!auto_weaponAttacksWhiffing())
 	{
-		return "";
+		options["attack with weapon"] = 0;
 	}
-	if(enemy.physical_resistance < 30 && !auto_weaponAttacksWhiffing() && auto_damageEstimate("attack") >= hp)
+	if(attackMinor != "" && attackMinor != "attack with weapon")
 	{
-		return "attack with weapon";
+		options[attackMinor] = costMinor;
 	}
-	skill best = $skill[none];
 	foreach sk in $skills[Spaghetti Spear, Stream of Sauce, Ravioli Shurikens, Saucestorm, Wave of Sauce, Cannelloni Cannon, Saucecicle, Weapon of the Pastalord, Saucegeyser, Northern Explosion]
 	{
-		if(!canUse(sk, false) || my_mp() < mp_cost(sk) || mp_cost(sk) > costToBeat - 3)
+		if(!canUse(sk, false)) continue;
+		if($skills[Stream of Sauce, Wave of Sauce] contains sk && monster_element(enemy) == $element[hot]) continue;
+		if($skills[Saucecicle, Northern Explosion] contains sk && monster_element(enemy) == $element[cold]) continue;
+		options[useSkill(sk, false)] = mp_cost(sk);
+	}
+
+	string best = "";
+	float bestCost = 0;
+	int bestRounds = 0;
+	boolean minorKnown = false;
+	string why = "";
+	foreach act, mp in options
+	{
+		if(mp > my_mp()) continue;
+		float e = auto_attackEstimate(seen, auto_attackKey(act), enemy, margin);
+		if(e <= 0)
 		{
+			// nothing on record for the free attack: try it while the monster can't hurt us
+			if(act == "attack with weapon" && e < 0 && incoming <= 0 && roundsLeft >= 5 && (best == "" || bestCost > 0))
+			{
+				best = act;
+				bestCost = 0;
+				bestRounds = roundsLeft;
+				why = "no rounds of it on record yet, and the monster isn't hurting us";
+			}
 			continue;
 		}
-		if($skills[Stream of Sauce, Wave of Sauce] contains sk && monster_element(enemy) == $element[hot])
+		int rounds = ceil(hp / e);
+		if(act == attackMinor) minorKnown = true;
+		if(rounds > roundsLeft || (rounds - 1) * max(incoming, expected_damage(enemy).to_float()) >= my_hp()) continue;
+		float cost = rounds * mp * mpMeat + (rounds - 1) * incoming * hpMeat;
+		if(best == "" || cost < bestCost || (cost == bestCost && rounds < bestRounds))
 		{
-			continue;
-		}
-		if($skills[Saucecicle, Northern Explosion] contains sk && monster_element(enemy) == $element[cold])
-		{
-			continue;
-		}
-		if(auto_damageEstimate(sk.name) >= hp && (best == $skill[none] || mp_cost(sk) < mp_cost(best)))
-		{
-			best = sk;
+			best = act;
+			bestCost = cost;
+			bestRounds = rounds;
+			why = "about " + rounds + " round(s) at " + e.to_int() + " a round, " + (rounds * mp) + " MP, and "
+				+ ((rounds - 1) * incoming).to_int() + " HP of its hits: " + cost.to_int() + " Meat";
 		}
 	}
-	if(best == $skill[none])
+	if(best == "" || (!minorKnown && bestCost > 0))
 	{
 		return "";
 	}
-	return useSkill(best, false);
+	if(best != attackMinor && !combat_status_check("cheapestlogged"))
+	{
+		combat_status_add("cheapestlogged");
+		auto_log_info("Finishing " + enemy + " with " + best + ": " + why + ".", "blue");
+	}
+	return best;
 }

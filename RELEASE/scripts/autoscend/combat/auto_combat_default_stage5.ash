@@ -1043,8 +1043,8 @@ string auto_combatDefaultStage5(int round, monster enemy, string text)
 		return attackMajor;
 	}
 
-	// finish with something smaller when the damage seen so far says it will kill (e.g. a weapon attack, not Saucegeyser)
-	string cheapKill = auto_cheapestKill(enemy, costMinor);
+	// finish with what costs least in MP and in HP lost to its hits meanwhile (auto_cheapestKill)
+	string cheapKill = auto_cheapestKill(round, enemy, attackMinor, costMinor);
 	if(cheapKill != "")
 	{
 		return cheapKill;

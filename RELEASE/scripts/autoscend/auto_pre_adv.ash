@@ -1153,6 +1153,7 @@ boolean auto_pre_adventure()
 
 	utilizeStillsuit();	
 
+	auto_noteRestorePrices();
 	set_property("auto_priorLocation", place);
 	auto_log_info("Pre Adventure at " + place + " done, beep.", "blue");
 	

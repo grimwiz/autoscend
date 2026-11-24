@@ -62,6 +62,8 @@ void auto_combatInitialize(int round, monster enemy, string text)
 	remove_property("auto_funPrefix");						//ocrs specific tracker
 	set_property("auto_combatHandlerThunderBird", "0");
 	set_property("_auto_combatTracker_MortarRound", -1);		//tracks which round we used Stuffed Mortar Shell in.
+	remove_property("_auto_combatTracker_hpLost");			//HP lost between our actions this fight (auto_incomingPerRound)
+	remove_property("_auto_combatTracker_hpRounds");
 	
 	//log some important info.
 	//some stuff is redundant to the pre_adventure function print_footer() so it will not be logged here
@@ -200,8 +202,8 @@ string auto_combatHandlerChoose(int round, monster enemy, string text)
 	return "";
 }
 
-// Records what each action did to the monster (auto_damageObserve), so the kill stage can pick the cheapest action
-// that will finish it (auto_cheapestKill).
+// Records what each action did to the monster and what its hits cost us (auto_damageObserve), so the kill stage can
+// pick the cheapest way to finish it (auto_cheapestKill).
 string auto_combatHandler(int round, monster enemy, string text)
 {
 	auto_damageObserve(round);

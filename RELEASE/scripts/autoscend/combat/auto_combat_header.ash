@@ -8,9 +8,12 @@ void auto_combatInitialize(int round, monster enemy, string text);
 string auto_combatHandler(int round, monster enemy, string text);
 void auto_damageObserve(int round);
 void auto_damageNoteAction(string action);
-int auto_damageEstimate(string key);
+float auto_attackEstimate(string seen, string key, monster enemy, int margin);
+string auto_attackKey(string action);
+int auto_attackHitStat();
+float auto_incomingPerRound(monster enemy);
 boolean auto_weaponAttacksWhiffing();
-string auto_cheapestKill(monster enemy, int costToBeat);		
+string auto_cheapestKill(int round, monster enemy, string attackMinor, int costMinor);
 
 #####################################################
 //defined in /autoscend/combat/auto_combat_util.ash

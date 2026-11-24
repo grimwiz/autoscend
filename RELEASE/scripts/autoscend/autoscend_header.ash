@@ -1976,6 +1976,7 @@ boolean provideFamExp(int amt, boolean doEquips);
 //Defined in autoscend/auto_restore.ash
 //Restoration (hp/mp) functions
 void invalidateRestoreOptionCache();
+void auto_noteRestorePrices();
 boolean acquireMP();
 boolean acquireMP(int goal);
 boolean acquireMP(int goal, int meat_reserve);

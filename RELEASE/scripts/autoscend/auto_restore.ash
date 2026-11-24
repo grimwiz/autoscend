@@ -297,6 +297,35 @@ __RestorationMetadata[string] __restoration_methods()
 	return __known_restoration_sources;
 }
 
+// What an NPC charges for a hit point and for a mana point, from the cheapest fixed-size restore sold to us, 0 if none
+// is (_auto_meatPerHp, _auto_meatPerMp): the kill stage prices the MP of an attack and the HP of the monster's hits
+// with them (auto_cheapestKill). Set before each adventure, as what's on sale changes.
+void auto_noteRestorePrices()
+{
+	float hp = 0;
+	float mp = 0;
+	foreach name, m in __restoration_methods()
+	{
+		if(m.type != "item") continue;
+		item it = name.to_item();
+		if(it == $item[none] || !auto_is_valid(it) || npc_price(it) <= 0) continue;
+		if(m.hp_restored > 0 && m.restores_variable_hp != __RESTORE_ALL && m.restores_variable_hp != __RESTORE_HALF
+			&& m.restores_variable_hp != __RESTORE_SCALING)
+		{
+			float per = npc_price(it) / m.hp_restored;
+			if(hp == 0 || per < hp) hp = per;
+		}
+		if(m.mp_restored > 0 && m.restores_variable_mp != __RESTORE_ALL && m.restores_variable_mp != __RESTORE_HALF
+			&& m.restores_variable_mp != __RESTORE_SCALING)
+		{
+			float per = npc_price(it) / m.mp_restored;
+			if(mp == 0 || per < mp) mp = per;
+		}
+	}
+	set_property("_auto_meatPerHp", hp);
+	set_property("_auto_meatPerMp", mp);
+}
+
 // primary attributes we want to sort by (maximize), you probably shouldnt add anything to this
 boolean[string] __PRIMARY_SORT_KEYS = {
 	"hp_total_restored": true,
