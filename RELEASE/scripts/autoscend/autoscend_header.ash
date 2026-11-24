@@ -1620,9 +1620,6 @@ boolean LX_craftAcquireItems();
 ########################################################################################################
 //Defined in autoscend/auto_adventure.ash
 string auto_bossNotReadyReason(monster boss);
-string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp);
-boolean auto_canHit(int defence);
-int auto_damagePerRound();
 boolean auto_lowHpZoneNow(location place);
 void auto_noteBossLoss();
 boolean autoAdv(int num, location loc, string option);		//num is ignored

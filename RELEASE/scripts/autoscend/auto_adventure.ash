@@ -2,14 +2,9 @@
 // it will (should?) handle the complete adventure from start to finish regardless of
 // how many choices or combats it encounters (this is mafia's adv1 behaviour)
 // TODO: seems to return false even if it adventures successfully but doesn't cost an adventure (mafia issue?)
-// A boss we can't beat yet: come back later, once levels or gear have caught up. A first life (a level 5 Seal Clubber
-// with no permed skills) met the Knob Goblin King, hit it for 1-3 a round against 60 HP while it hit back for 11, and
-// the combat script aborted the day. Two tests, both with what we know before the fight:
-//  - hitting it: KoL's to-hit is our hit stat against its defence (plus monster level). Spells don't need it.
-//  - outlasting it: its HP over our usual damage a round (auto_damageEstimate, the second-lowest of the last 10
-//    rounds of each action) gives the rounds; that many of its hits (expected_damage) must leave us standing.
-// The Boss Bat (defence 29, 40 HP) passed at 31 Muscle and was beaten; the Goblin King (defence 47 + 10) fails.
-// And after losing to a boss (auto_noteBossLoss), wait until a base stat has risen before the rematch.
+// A boss that beat us: no rematch until a base stat has risen (auto_noteBossLoss records the loss, from
+// beatenUpResolution). The loss is the evidence: a damage estimate from other fights doesn't carry across weapons or
+// monster defences, and on 2026-11-23 one read 11 a round against a usual 200, so there's no check before the first try.
 void auto_noteBossLoss()
 {
 	monster boss = get_property("lastEncounter").to_monster();
@@ -39,48 +34,6 @@ string auto_bossNotReadyReason(monster boss)
 			return "it beat us at Muscle " + was[0] + ", Mysticality " + was[1] + ", Moxie " + was[2]
 				+ ", and none of those has risen since";
 		}
-	}
-	int ml = monster_level_adjustment();
-	return auto_wouldLoseReason(boss, boss.base_hp + ml, boss.base_defense + ml, my_maxhp());
-}
-
-// Whether we can hit a monster with this defence: KoL's to-hit is our hit stat against it. Spells don't need it.
-boolean auto_canHit(int defence)
-{
-	boolean haveSpell = auto_have_skill($skill[Saucestorm]) || auto_have_skill($skill[Saucegeyser]);
-	return haveSpell || buffed_hit_stat() >= defence;
-}
-
-// Our usual damage a round: the best of our attacks' estimates (auto_damageEstimate), -1 before enough fights to tell.
-int auto_damagePerRound()
-{
-	int perRound = -1;
-	foreach key in $strings[attack, Lunge Smack, Thrust-Smack, Lunging Thrust-Smack, Saucestorm, Saucegeyser]
-	{
-		perRound = max(perRound, auto_damageEstimate(key));
-	}
-	return perRound;
-}
-
-// Why a fight with this monster would be lost, or "": the boss check's two tests, for any monster. Before a fight it
-// gets the monster's full HP and our maximum; during one (combat stage 2's retreat) what it has left and what we have.
-string auto_wouldLoseReason(monster enemy, int hp, int defence, int ourHp)
-{
-	if(!auto_canHit(defence) && expected_damage(enemy) > 0)	// one that can't hurt us can't win
-	{
-		return "our hit stat (" + buffed_hit_stat() + ") is below its defence (" + defence + ")";
-	}
-	int perRound = auto_damagePerRound();
-	if(perRound <= 0 || hp <= 0)
-	{
-		return "";		// no damage seen yet this ascension to judge by
-	}
-	int rounds = (hp + perRound - 1) / perRound;
-	int taken = expected_damage(enemy) * rounds;
-	if(taken >= ourHp)
-	{
-		return "we'd need about " + rounds + " rounds at " + perRound + " a round for its " + hp + " HP, and its hits ("
-			+ expected_damage(enemy) + " each) would take " + taken + " of our " + ourHp + " HP";
 	}
 	return "";
 }
