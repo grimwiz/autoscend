@@ -2966,7 +2966,10 @@ boolean L11_shenCopperhead()
 
 		// monster level increases zone damage
 		addToMaximize("-10ml");
-		uneffect($effect[Ur-Kel\'s Aria of Annoyance]);
+		if(auto_beatenUpIn($location[The Copperhead Club]))	// a paid buff stays on unless we've lost a fight here
+		{
+			uneffect($effect[Ur-Kel\'s Aria of Annoyance]);
+		}
 		if (autoAdv($location[The Copperhead Club]))
 		{
 			if (get_property("lastEncounter").contains_text("Shen Copperhead, "))

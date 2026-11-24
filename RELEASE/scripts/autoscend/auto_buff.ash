@@ -1330,9 +1330,12 @@ boolean buffMaintain(effect buff)
 
 // Checks to see if we are already wearing a facial expression before using buffMaintain
 //	if an expression is REQUIRED force it using buffMaintain
+// Only one facial expression can be on, and a new one replaces it. Pride of the Puffin is one too: left out of this
+// list, Patient Smile (after a fight, for stats) and Pride of the Puffin (before one, for ML) replaced each other 45
+// times in grimwiz's 237 adventures on 2026-11-23, about every 5 turns of their 10.
 boolean auto_faceCheck(effect face)
 {
-	boolean[effect] FacialExpressions = $effects[Snarl of the Timberwolf, Scowl of the Auk, Stiff Upper Lip, Patient Smile, Quiet Determination, Arched Eyebrow of the Archmage, Wizard Squint, Quiet Judgement, Icy Glare, Wry Smile, Disco Leer, Disco Smirk, Suspicious Gaze, Knowing Smile, Quiet Desperation, Inscrutable Gaze];
+	boolean[effect] FacialExpressions = $effects[Pride of the Puffin, Snarl of the Timberwolf, Scowl of the Auk, Stiff Upper Lip, Patient Smile, Quiet Determination, Arched Eyebrow of the Archmage, Wizard Squint, Quiet Judgement, Icy Glare, Wry Smile, Disco Leer, Disco Smirk, Suspicious Gaze, Knowing Smile, Quiet Desperation, Inscrutable Gaze];
 	boolean CanEmote = true;
 
 	foreach FExp in FacialExpressions

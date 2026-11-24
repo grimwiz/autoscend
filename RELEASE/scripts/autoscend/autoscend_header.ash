@@ -2276,6 +2276,7 @@ boolean auto_paidMLFits(int buffML, int cap);
 boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit);
 boolean angryAgateCheck(int angryAgateToML, int angryAgateUpperLimit, int angryAgateLowerLimit);
 boolean auto_MaxMLToCap(int ToML, boolean doAltML);
+boolean auto_beatenUpIn(location place);
 boolean auto_canForceNextNoncombat();
 boolean auto_forceNextNoncombat();
 boolean auto_haveQueuedForcedNonCombat();

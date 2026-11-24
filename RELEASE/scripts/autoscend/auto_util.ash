@@ -5005,6 +5005,20 @@ boolean auto_paidMLFits(int buffML, int cap)
 	return auto_mlWithoutMcd() + highest_available_mcd() < cap && auto_mlWithoutMcd() + buffML <= cap;
 }
 
+// A fight lost in this zone this ascension (auto_beatenUpLocations, kept by auto_beaten_handler).
+boolean auto_beatenUpIn(location place)
+{
+	foreach i, entry in split_string(get_property("auto_beatenUpLocations"), ",")
+	{
+		int at = index_of(entry, ":place:");
+		if(at >= 0 && substring(entry, at + 7) == place.to_string())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // We use this function to determine the suitability of using Ur-Kel's
 boolean UrKelCheck(int UrKelToML, int UrKelUpperLimit, int UrKelLowerLimit)
 {
@@ -5058,7 +5072,14 @@ boolean auto_MaxMLToCap(int ToML, boolean doAltML)
 			int cap = auto_convertDesiredML(ToML);
 			if((have_effect(eff) > 0 && auto_mlWithoutMcd() <= cap) || auto_paidMLFits(numeric_modifier(eff, "Monster Level").to_int(), cap))
 			{
-				buffMaintain(eff);
+				if(eff == $effect[Pride of the Puffin])
+				{
+					auto_faceCheck(eff);	// a facial expression: not over another one that's still on
+				}
+				else
+				{
+					buffMaintain(eff);
+				}
 			}
 		}
 	}

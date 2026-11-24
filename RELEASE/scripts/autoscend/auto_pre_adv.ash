@@ -931,9 +931,21 @@ boolean auto_pre_adventure()
 		auto_change_mcd(0);
 		addToMaximize("-10ml");
 		uneffect($effect[Driving Recklessly]);
-		uneffect($effect[Ur-Kel\'s Aria of Annoyance]);
+		// A buff paid for in MP stays on unless a fight has been lost here (user, 2026-11-24: "if a mp buff is active
+		// then leave it active unless there is a death"): the free dials above go down, the buff runs out by itself.
+		// Shrugged for every Copperhead Club turn and cast again for the next turn elsewhere, Ur-Kel's Aria lost 78 of
+		// its turns over 10 casts on grimwiz on 2026-11-23.
+		boolean shrugPaid = auto_beatenUpIn(place);
+		if(shrugPaid)
+		{
+			uneffect($effect[Ur-Kel\'s Aria of Annoyance]);
+		}
 
-		if(purgeML && item_amount($item[soft green echo eyedrop antidote]) > 5)
+		if(!shrugPaid)
+		{
+			// leave them
+		}
+		else if(purgeML && item_amount($item[soft green echo eyedrop antidote]) > 5)
 		{
 			uneffect($effect[Drescher\'s Annoying Noise]);
 			uneffect($effect[Pride of the Puffin]);
