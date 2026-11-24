@@ -606,28 +606,6 @@ string auto_combatDefaultStage2(int round, monster enemy, string text)
 		loopHandlerDelayAll();
 		return useSkill($skill[Slaughter]);
 	}
-
-	// A fight we'd lose, by the boss check's sums (auto_wouldLoseReason) with what it has left and what we have: run away
-	// rather than end Beaten Up and spend turns resting it off. A first-life Seal Clubber at 54 HP kept meeting the Hellion
-	// in the Dark Neck of the Woods (52 HP against our 17 a round, 23 a hit back), lost, rested, and went back in.
-	// Bosses are left to the check before going in, as most can't be run from. A failed escape gives the monster a free
-	// hit, so after three tries we fight on.
-	if(!enemy.boss && !combat_status_check("retreat3"))
-	{
-		string losing = auto_wouldLoseReason(enemy, monster_hp(), monster_defense(), my_hp());
-		if(losing != "")
-		{
-			int tries = combat_status_check("retreat2") ? 3 : (combat_status_check("retreat1") ? 2 : 1);
-			combat_status_add("retreat" + tries);
-			string escape = freeRunCombatString(enemy, my_location(), true);
-			if(escape == "" || index_of(escape, "runaway") == 0)
-			{
-				escape = "runaway";
-			}
-			auto_log_warning("Running away from " + enemy + ": " + losing + ".", "red");
-			return escape;
-		}
-	}
-
+	
 	return "";
 }
