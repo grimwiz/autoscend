@@ -1334,7 +1334,22 @@ record auto_attackPoint
 	int margin;
 	int dmg;
 	int mon;
+	boolean hit;
 };
+
+// A spell has no to-hit roll against the monster's defence: the damage spells the kill stage weighs.
+boolean auto_attackIsSpell(string action)
+{
+	return $strings[Spaghetti Spear, Stream of Sauce, Ravioli Shurikens, Saucestorm, Wave of Sauce, Cannelloni Cannon, Saucecicle, Weapon of the Pastalord, Saucegeyser, Northern Explosion] contains action;
+}
+
+// The stat the key's weapon hits with: Moxie for a ranged one, else Muscle (a melee weapon, or none).
+stat auto_attackStatOf(string key)
+{
+	int at = index_of(key, "@");
+	item weapon = at < 0 ? $item[none] : substring(key, at + 1).to_int().to_item();
+	return weapon_type(weapon) == $stat[Moxie] ? $stat[Moxie] : $stat[Muscle];
+}
 
 // Our hit stat now. With attacks that can't miss buffed_hit_stat() is Integer.MAX_VALUE: then the stat itself.
 int auto_attackHitStat()
@@ -1366,17 +1381,31 @@ string auto_attackKey(string action)
 	return name + "@" + equipped_item($slot[weapon]).to_int();
 }
 
-auto_attackPoint[int] auto_attackPoints(string seen, string key)
+// The rounds on record under the keys asked for, each a hit or a miss against its own key's median: under a quarter of
+// it is a miss, what lands then being passive damage. which: a key alone, "<action>@" for that action with any weapon,
+// or "stat:Muscle" / "stat:Moxie" for every action but a spell with a weapon that hits with that stat.
+auto_attackPoint[int] auto_attackPoints(string seen, string which)
 {
 	auto_attackPoint[int] pts;
-	string prefix = key;
-	boolean pooled = ends_with(key, "@");		// every weapon's rounds with this action
 	foreach i, entry in split_string(seen, "\\|")
 	{
 		int eq = index_of(entry, "=");
 		if(eq <= 0) continue;
 		string k = substring(entry, 0, eq);
-		if(pooled ? !starts_with(k, prefix) : k != key) continue;
+		int at = index_of(k, "@");
+		if(at <= 0) continue;
+		boolean want = k == which;
+		if(starts_with(which, "stat:"))
+		{
+			want = !auto_attackIsSpell(substring(k, 0, at)) && auto_attackStatOf(k).to_string() == substring(which, 5);
+		}
+		else if(ends_with(which, "@"))
+		{
+			want = starts_with(k, which);
+		}
+		if(!want) continue;
+		auto_attackPoint[int] mine;
+		int[int] ds;
 		foreach j, p in split_string(substring(entry, eq + 1), ",")
 		{
 			string[int] f = split_string(p, "/");
@@ -1385,62 +1414,69 @@ auto_attackPoint[int] auto_attackPoints(string seen, string key)
 			pt.margin = f[0].to_int();
 			pt.dmg = f[1].to_int();
 			pt.mon = f[2].to_int();
+			ds[count(mine)] = pt.dmg;
+			mine[count(mine)] = pt;
+		}
+		if(count(mine) == 0) continue;
+		sort ds by value;
+		float miss = 0.25 * ds[count(ds) / 2];
+		foreach j, pt in mine
+		{
+			pt.hit = pt.dmg > 0 && pt.dmg >= miss;
 			pts[count(pts)] = pt;
 		}
 	}
 	return pts;
 }
 
-// The HP this action takes off this monster in an average round at this margin: hit rate times the damage of a hit.
-// The damage of a hit is a straight line in the margin, fitted to the hits seen (slope kept between 0 and 3); against a
-// monster with hits of its own on record, scaled by how those came out against the line (resistances, caps). The hit
-// rate is this monster's when it has 3 rounds on record, else that of rounds within 25 of this margin, and never
-// below that of all the rounds at lower margins. -1 when that can't be told: fewer than 4 rounds with this action (this
-// weapon's, else any weapon's), or none near this margin.
-float auto_attackEstimate(string seen, string key, monster enemy, int margin)
+// The HP this action takes off this monster in an average round at this margin (our hit stat over its defence): the
+// chance to hit times the damage of a hit. The chance to hit isn't the weapon's but the stat's against the defence (user,
+// 2026-11-24: "a hit and miss is probably not weapon specific, but type of weapon (mox, mus) vs the creatures defence"),
+// so it comes from every non-spell action's rounds with a weapon of the same stat (a spell's from its own rounds): this
+// monster's own over 3 rounds (some dodge: Lunge Smack did 11-17 in 9 of 19 Copperhead Club rounds on 2026-11-23 at
+// Muscle 266 against defence 160-170, 311-350 in the others), else those within 25 of this margin, never below the
+// share at lower margins. A hit's damage is the action's with this weapon (with any weapon while this one has under 4
+// rounds): a straight line in the margin fitted to its hits (slope 0 to 3), scaled to this monster's own hits when it
+// has 2, else by its physical resistance for a weapon attack. -1 when that can't be told: under 4 rounds of the action,
+// or no rounds near this margin to give the chance to hit.
+float auto_attackEstimate(string seen, string key, monster mob, int margin)
 {
-	if(key == "") return -1;
+	if(key == "" || index_of(key, "@") <= 0) return -1;
+	string action = substring(key, 0, index_of(key, "@"));
 	auto_attackPoint[int] pts = auto_attackPoints(seen, key);
-	if(count(pts) < 4)
+	if(count(pts) < 4) pts = auto_attackPoints(seen, action + "@");
+	if(count(pts) < 4) return -1;
+	auto_attackPoint[int] tries = auto_attackIsSpell(action) ? pts : auto_attackPoints(seen, "stat:" + auto_attackStatOf(key));
+	int monAll = 0, monHit = 0, nearAll = 0, nearHit = 0, lowAll = 0, lowHit = 0;
+	foreach i, p in tries
 	{
-		pts = auto_attackPoints(seen, substring(key, 0, index_of(key, "@") + 1));
-	}
-	int n = count(pts);
-	if(n < 4) return -1;
-	int[int] ds;
-	foreach i, p in pts ds[i] = p.dmg;
-	sort ds by value;
-	float miss = 0.25 * ds[n / 2];
-	int monAll = 0, monHit = 0, nearAll = 0, nearHit = 0, lowAll = 0, lowHit = 0, hits = 0;
-	float sm = 0, sd = 0;
-	int[int] hitDs;
-	foreach i, p in pts
-	{
-		boolean hit = p.dmg > 0 && p.dmg >= miss;
-		if(p.mon == enemy.to_int()) { monAll += 1; if(hit) monHit += 1; }
-		if(p.margin - margin <= 25 && margin - p.margin <= 25) { nearAll += 1; if(hit) nearHit += 1; }
-		if(p.margin <= margin) { lowAll += 1; if(hit) lowHit += 1; }
-		if(hit)
-		{
-			hitDs[hits] = p.dmg;
-			hits += 1;
-			sm += p.margin;
-			sd += p.dmg;
-		}
+		if(p.mon == mob.to_int()) { monAll += 1; if(p.hit) monHit += 1; }
+		if(p.margin - margin <= 25 && margin - p.margin <= 25) { nearAll += 1; if(p.hit) nearHit += 1; }
+		if(p.margin <= margin) { lowAll += 1; if(p.hit) lowHit += 1; }
 	}
 	float rate;
 	if(monAll >= 3) rate = monHit.to_float() / monAll;
 	else if(nearAll >= 2) rate = nearHit.to_float() / nearAll;
 	else return -1;
-	// a higher margin never hits less often: at least the rate of all the rounds at lower margins
 	if(monAll < 3 && lowAll >= 4) rate = max(rate, lowHit.to_float() / lowAll);
+	int hits = 0;
+	float sm = 0, sd = 0;
+	int[int] hitDs;
+	foreach i, p in pts
+	{
+		if(!p.hit) continue;
+		hitDs[hits] = p.dmg;
+		hits += 1;
+		sm += p.margin;
+		sd += p.dmg;
+	}
 	if(hits == 0 || rate <= 0) return 0;
 	float meanM = sm / hits;
 	float meanD = sd / hits;
 	float vm = 0, cv = 0;
 	foreach i, p in pts
 	{
-		if(p.dmg <= 0 || p.dmg < miss) continue;
+		if(!p.hit) continue;
 		vm += (p.margin - meanM) * (p.margin - meanM);
 		cv += (p.margin - meanM) * (p.dmg - meanD);
 	}
@@ -1460,7 +1496,7 @@ float auto_attackEstimate(string seen, string key, monster enemy, int margin)
 	float[int] ratios;
 	foreach i, p in pts
 	{
-		if(p.mon != enemy.to_int() || p.dmg <= 0 || p.dmg < miss) continue;
+		if(p.mon != mob.to_int() || !p.hit) continue;
 		ratios[count(ratios)] = p.dmg / max(1.0, base + slope * p.margin);
 	}
 	if(count(ratios) >= 2)
@@ -1468,9 +1504,9 @@ float auto_attackEstimate(string seen, string key, monster enemy, int margin)
 		sort ratios by value;
 		dmg *= ratios[count(ratios) / 2];
 	}
-	else if(starts_with(key, "attack@"))
+	else if(action == "attack")
 	{
-		dmg *= (100 - min(100, enemy.physical_resistance)) / 100.0;
+		dmg *= (100 - min(100, mob.physical_resistance)) / 100.0;
 	}
 	return max(0.0, rate * dmg);
 }
