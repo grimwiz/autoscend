@@ -1516,12 +1516,14 @@ float auto_attackEstimate(string seen, string key, monster mob, int margin)
 //   ATTACKDATA act=<action> wid=<weapon id> pow=<power> wstat=<its stat> hands=<n> hit=<buffed hit stat> mus= mox= mys=
 //   lvl= mon=<monster id> def=<its defence now> matk= mhp=<its HP before> phys=<its physical resistance> mele=<element>
 //   ml= wd=<Weapon Damage> wdp=<Weapon Damage Percent> rd= rdp= sd= sdp= crit= scrit= hot= cold= stench= spooky= sleaze=
-//   fam=<familiar>/<weight> round= then, once the next round shows it: dmg=<HP it lost> crit=<the page said CRITICAL>
-//   fumble=<the page said FUMBLE> lost=<HP we lost meanwhile>
+//   fam=<familiar>/<weight> round=<n>
+// Written as the action is chosen, so the round that ends the fight is there too (no round follows it to observe: written a
+// round later, 30 adventures on 2026-11-24 gave 15 lines). What the action did is in
+// KoLmafia's own log lines for round n+1 ("takes N damage", "You lose N hit points").
 string auto_attackFeatures(string action, int round)
 {
 	item w = equipped_item($slot[weapon]);
-	string f = "act=" + action + " wid=" + w.to_int() + " pow=" + get_power(w) + " wstat=" + weapon_type(w) + " hands=" + weapon_hands(w)
+	string f = "act=" + replace_string(action, " ", "_") + " wid=" + w.to_int() + " pow=" + get_power(w) + " wstat=" + weapon_type(w) + " hands=" + weapon_hands(w)
 		+ " hit=" + buffed_hit_stat() + " mus=" + my_buffedstat($stat[Muscle]) + " mox=" + my_buffedstat($stat[Moxie])
 		+ " mys=" + my_buffedstat($stat[Mysticality]) + " lvl=" + my_level()
 		+ " mon=" + last_monster().to_int() + " def=" + monster_defense() + " matk=" + monster_attack() + " mhp=" + monster_hp()
@@ -1547,9 +1549,6 @@ void auto_damageObserve(int round, string text)
 		return;
 	}
 	int lost = get_property("_auto_combatTracker_lastHP").to_int() - my_hp();
-	string page = text.to_upper_case();
-	auto_log_debug("ATTACKDATA " + get_property("_auto_combatTracker_lastFeatures") + " dmg=" + max(0, before - monster_hp())
-		+ " crit=" + contains_text(page, "CRITICAL") + " fumble=" + contains_text(page, "FUMBLE") + " lost=" + lost);
 	set_property("_auto_combatTracker_hpLost", get_property("_auto_combatTracker_hpLost").to_int() + lost);
 	set_property("_auto_combatTracker_hpRounds", get_property("_auto_combatTracker_hpRounds").to_int() + 1);
 	int mortarRound = get_property("_auto_combatTracker_MortarRound").to_int();
@@ -1591,7 +1590,7 @@ void auto_damageObserve(int round, string text)
 
 void auto_damageNoteAction(string action, int round)
 {
-	set_property("_auto_combatTracker_lastFeatures", auto_attackFeatures(action, round));
+	auto_log_debug("ATTACKDATA " + auto_attackFeatures(action, round));
 	set_property("_auto_combatTracker_lastAction", auto_attackKey(action));
 	set_property("_auto_combatTracker_lastMonsterHP", monster_hp());
 	set_property("_auto_combatTracker_lastHP", my_hp());
