@@ -206,8 +206,8 @@ string auto_combatHandlerChoose(int round, monster enemy, string text)
 // pick the cheapest way to finish it (auto_cheapestKill).
 string auto_combatHandler(int round, monster enemy, string text)
 {
-	auto_damageObserve(round);
+	auto_damageObserve(round, text);
 	string retval = auto_combatHandlerChoose(round, enemy, text);
-	auto_damageNoteAction(retval);
+	auto_damageNoteAction(retval, round);
 	return retval;
 }

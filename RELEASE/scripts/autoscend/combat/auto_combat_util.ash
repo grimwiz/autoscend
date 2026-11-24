@@ -1511,7 +1511,33 @@ float auto_attackEstimate(string seen, string key, monster mob, int margin)
 	return max(0.0, rate * dmg);
 }
 
-void auto_damageObserve(int round)
+// One line a round in the session log with everything KoL's combat sums could use, so they can be fitted from the log
+// (user, 2026-11-24: "the model should be by equipment stats not weapon. you need to model the kol combat algorythm"):
+//   ATTACKDATA act=<action> wid=<weapon id> pow=<power> wstat=<its stat> hands=<n> hit=<buffed hit stat> mus= mox= mys=
+//   lvl= mon=<monster id> def=<its defence now> matk= mhp=<its HP before> phys=<its physical resistance> mele=<element>
+//   ml= wd=<Weapon Damage> wdp=<Weapon Damage Percent> rd= rdp= sd= sdp= crit= scrit= hot= cold= stench= spooky= sleaze=
+//   fam=<familiar>/<weight> round= then, once the next round shows it: dmg=<HP it lost> crit=<the page said CRITICAL>
+//   fumble=<the page said FUMBLE> lost=<HP we lost meanwhile>
+string auto_attackFeatures(string action, int round)
+{
+	item w = equipped_item($slot[weapon]);
+	string f = "act=" + action + " wid=" + w.to_int() + " pow=" + get_power(w) + " wstat=" + weapon_type(w) + " hands=" + weapon_hands(w)
+		+ " hit=" + buffed_hit_stat() + " mus=" + my_buffedstat($stat[Muscle]) + " mox=" + my_buffedstat($stat[Moxie])
+		+ " mys=" + my_buffedstat($stat[Mysticality]) + " lvl=" + my_level()
+		+ " mon=" + last_monster().to_int() + " def=" + monster_defense() + " matk=" + monster_attack() + " mhp=" + monster_hp()
+		+ " phys=" + last_monster().physical_resistance + " mele=" + monster_element() + " ml=" + monster_level_adjustment()
+		+ " wd=" + numeric_modifier("Weapon Damage") + " wdp=" + numeric_modifier("Weapon Damage Percent")
+		+ " rd=" + numeric_modifier("Ranged Damage") + " rdp=" + numeric_modifier("Ranged Damage Percent")
+		+ " sd=" + numeric_modifier("Spell Damage") + " sdp=" + numeric_modifier("Spell Damage Percent")
+		+ " crit=" + numeric_modifier("Critical Hit Percent") + " scrit=" + numeric_modifier("Spell Critical Percent");
+	foreach el in $strings[Hot, Cold, Stench, Spooky, Sleaze]
+	{
+		f += " " + el.to_lower_case() + "=" + numeric_modifier(el + " Damage");
+	}
+	return f + " fam=" + my_familiar().to_int() + "/" + (familiar_weight(my_familiar()) + weight_adjustment()) + " round=" + round;
+}
+
+void auto_damageObserve(int round, string text)
 {
 	string key = get_property("_auto_combatTracker_lastAction");
 	int before = get_property("_auto_combatTracker_lastMonsterHP").to_int();
@@ -1521,6 +1547,9 @@ void auto_damageObserve(int round)
 		return;
 	}
 	int lost = get_property("_auto_combatTracker_lastHP").to_int() - my_hp();
+	string page = text.to_upper_case();
+	auto_log_debug("ATTACKDATA " + get_property("_auto_combatTracker_lastFeatures") + " dmg=" + max(0, before - monster_hp())
+		+ " crit=" + contains_text(page, "CRITICAL") + " fumble=" + contains_text(page, "FUMBLE") + " lost=" + lost);
 	set_property("_auto_combatTracker_hpLost", get_property("_auto_combatTracker_hpLost").to_int() + lost);
 	set_property("_auto_combatTracker_hpRounds", get_property("_auto_combatTracker_hpRounds").to_int() + 1);
 	int mortarRound = get_property("_auto_combatTracker_MortarRound").to_int();
@@ -1560,8 +1589,9 @@ void auto_damageObserve(int round)
 	set_property("auto_attackSeen", out);
 }
 
-void auto_damageNoteAction(string action)
+void auto_damageNoteAction(string action, int round)
 {
+	set_property("_auto_combatTracker_lastFeatures", auto_attackFeatures(action, round));
 	set_property("_auto_combatTracker_lastAction", auto_attackKey(action));
 	set_property("_auto_combatTracker_lastMonsterHP", monster_hp());
 	set_property("_auto_combatTracker_lastHP", my_hp());

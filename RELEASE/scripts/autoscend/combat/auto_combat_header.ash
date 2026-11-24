@@ -6,8 +6,8 @@
 //defined in /autoscend/combat/auto_combat.ash
 void auto_combatInitialize(int round, monster enemy, string text);
 string auto_combatHandler(int round, monster enemy, string text);
-void auto_damageObserve(int round);
-void auto_damageNoteAction(string action);
+void auto_damageObserve(int round, string text);
+void auto_damageNoteAction(string action, int round);
 float auto_attackEstimate(string seen, string key, monster enemy, int margin);
 string auto_attackKey(string action);
 int auto_attackHitStat();
