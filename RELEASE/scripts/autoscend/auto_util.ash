@@ -5072,14 +5072,7 @@ boolean auto_MaxMLToCap(int ToML, boolean doAltML)
 			int cap = auto_convertDesiredML(ToML);
 			if((have_effect(eff) > 0 && auto_mlWithoutMcd() <= cap) || auto_paidMLFits(numeric_modifier(eff, "Monster Level").to_int(), cap))
 			{
-				if(eff == $effect[Pride of the Puffin])
-				{
-					auto_faceCheck(eff);	// a facial expression: not over another one that's still on
-				}
-				else
-				{
-					buffMaintain(eff);
-				}
+				buffMaintain(eff);
 			}
 		}
 	}
