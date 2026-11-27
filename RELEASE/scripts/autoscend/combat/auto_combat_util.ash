@@ -1624,6 +1624,13 @@ float auto_incomingPerRound(monster enemy)
 // with 2 rounds to spare before the round limit and leave us standing. While the monster does us no damage the weapon
 // attack costs nothing, and with no rounds of it on record yet it's tried then, which is how it gets an estimate. ""
 // leaves the choice to the usual code: when the usual attack's cost can't be told and nothing free will do.
+// Club 'Em Back in Time (5 a day) is an option too, priced at a turn (auto_turnValue), which is what a use saves: dear
+// enough that it's kept for trouble, not so dear that it's never used (user, 2026-11-27: "the club em is a free escape,
+// should be saved. the 'cheapest attack' should allocate an expensive cost to that attack, not so high that it will
+// never be used but it can best be used when in trouble"). It's taken when the other options cost more than a turn,
+// when every option with a record can't finish or would leave us dead, or when the weapon attacks keep missing and
+// nothing else will do. Before, the fork used it whenever HP was under 30%, so on 2026-11-27 grimwiz, HP farming at
+// 50/340 in the Sleazy Back Alley where nothing could hurt it, spent all five on its junk monsters.
 string auto_cheapestKill(int round, monster enemy, string attackMinor, int costMinor)
 {
 	int hp = monster_hp();
@@ -1658,11 +1665,13 @@ string auto_cheapestKill(int round, monster enemy, string attackMinor, int costM
 	float bestCost = 0;
 	int bestRounds = 0;
 	boolean minorKnown = false;
+	boolean anyKnown = false;	// an option with a damage record, so "nothing finishes" is known, not a guess
 	string why = "";
 	foreach act, mp in options
 	{
 		if(mp > my_mp()) continue;
 		float e = auto_attackEstimate(seen, auto_attackKey(act), enemy, margin);
+		if(e > 0) anyKnown = true;
 		if(e <= 0)
 		{
 			// nothing on record for the free attack: try it while the monster can't hurt us
@@ -1686,6 +1695,20 @@ string auto_cheapestKill(int round, monster enemy, string attackMinor, int costM
 			bestRounds = rounds;
 			why = "about " + rounds + " round(s) at " + e.to_int() + " a round, " + (rounds * mp) + " MP, and "
 				+ ((rounds - 1) * incoming).to_int() + " HP of its hits: " + cost.to_int() + " Meat";
+		}
+	}
+	skill club = $skill[Club 'Em Back in Time];
+	if(auto_clubEmBackInTimesRemaining() > 0 && canUse(club, false) && instakillable(enemy) && !isFreeMonster(enemy, my_location()))
+	{
+		float clubCost = auto_turnValue();
+		boolean trouble = best == "" ? (anyKnown || auto_weaponAttacksWhiffing()) : bestCost > clubCost;
+		if(trouble)
+		{
+			why = best == "" ? "nothing else here can finish it and leave us standing"
+				: "the cheapest other way, " + best + ", costs " + bestCost.to_int() + " Meat, over the " + clubCost.to_int() + " a turn is worth";
+			best = useSkill(club, false);
+			bestCost = clubCost;
+			minorKnown = true;
 		}
 	}
 	if(best == "" || (!minorKnown && bestCost > 0))

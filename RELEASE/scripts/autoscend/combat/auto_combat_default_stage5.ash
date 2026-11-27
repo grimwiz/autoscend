@@ -841,8 +841,9 @@ string auto_combatDefaultStage5(int round, monster enemy, string text)
 		
 	} // class attack selection
 
-	// a fight we are losing (attacks not landing, or under 30% HP): what wantToClubEmBackInTime saves the uses for
-	if((auto_weaponAttacksWhiffing() || ((my_hp() * 10)/3) < my_maxhp()) && canUse($skill[Club 'Em Back in Time]) && instakillable(enemy) && !isFreeMonster(enemy, my_location()))
+	// a fight we are in trouble in: what wantToClubEmBackInTime saves the uses for. auto_cheapestKill picks it when every
+	// other way to finish costs more than the turn a use saves, or none will do (user, 2026-11-27).
+	if(auto_cheapestKill(round, enemy, attackMinor, costMinor) == useSkill($skill[Club 'Em Back in Time], false))
 	{
 		handleTracker(enemy, $skill[Club 'Em Back in Time], "auto_instakill");
 		return useSkill($skill[Club 'Em Back in Time]);
